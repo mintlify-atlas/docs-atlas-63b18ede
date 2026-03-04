@@ -1,0 +1,110 @@
+{
+  "projectType": "saas",
+  "projectName": "Droguería Somos Salud",
+  "projectDescription": "Sistema de gestión y control de inventarios, compras y ventas para droguerías pequeñas",
+  "theme": "almond",
+  "primaryColor": "#00A8A8",
+  "lightColor": "#00D4D4",
+  "darkColor": "#007C7C",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "User Guide",
+            "pages": [
+              "user-guide/authentication",
+              "user-guide/dashboard",
+              "user-guide/roles-permissions"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/inventory-management",
+              "features/articles",
+              "features/purchases",
+              "features/sales",
+              "features/suppliers",
+              "features/laboratories",
+              "features/presentations"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "administration/user-management",
+              "administration/audit-logs",
+              "administration/bills"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Database",
+        "groups": [
+          {
+            "group": "Database Schema",
+            "pages": [
+              "database/overview",
+              "database/tables",
+              "database/relationships"
+            ]
+          },
+          {
+            "group": "Setup",
+            "pages": [
+              "database/configuration",
+              "database/migration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Deployment",
+        "groups": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/requirements",
+              "deployment/apache-configuration",
+              "deployment/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Inventory management with stock tracking and minimum stock alerts",
+    "Purchase order management with supplier tracking",
+    "Sales transaction processing",
+    "Multi-role user system (Super Admin, Admin, User)",
+    "Bill and invoice management with payment status tracking",
+    "Audit logging for all user actions",
+    "Laboratory and presentation catalog management",
+    "Dashboard with expiration date tracking"
+  ],
+  "publicApiSurface": [
+    "/login - User authentication",
+    "/dashboard - Main dashboard view",
+    "/articles - Product/article management",
+    "/purchases - Purchase order management",
+    "/sales - Sales transaction management",
+    "/suppliers - Supplier management",
+    "/laboratories - Laboratory catalog",
+    "/presentations - Product presentation types",
+    "/bills - Bill and invoice tracking",
+    "/users - User account management",
+    "/audit - System audit logs"
+  ]
+}
