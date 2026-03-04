@@ -1,0 +1,398 @@
+---
+title: 'Sales Management'
+description: 'Process sales transactions, manage multi-item sales, and automatically update inventory with real-time stock validation'
+---
+
+## Overview
+
+The sales management system processes customer transactions with automatic inventory updates and stock validation. Each sale can include multiple products, and the system prevents overselling by validating stock availability before processing transactions.
+
+## Database Schema
+
+### Venta (Sale) Table
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | int(11) | PRIMARY KEY, AUTO_INCREMENT | Unique sale identifier |
+| `fecha_venta` | timestamp | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Sale date and time |
+
+### Venta_Detalle (Sale Detail) Table
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | int(11) | PRIMARY KEY, AUTO_INCREMENT | Unique detail record identifier |
+| `cantidad` | int(11) | NOT NULL | Quantity sold |
+| `articulo_id` | int(11) | NOT NULL, FOREIGN KEY | Reference to product |
+| `venta_id` | int(11) | NOT NULL, FOREIGN KEY | Reference to sale |
+
+### Foreign Key Relationships
+
+```sql
+CONSTRAINT `fk_venta_articulo1` 
+    FOREIGN KEY (`articulo_id`) REFERENCES `articulo` (`id`)
+
+CONSTRAINT `fk_venta_detalle_venta1` 
+    FOREIGN KEY (`venta_id`) REFERENCES `venta` (`id`)
+```
+
+<Note>
+Sales use a header-detail structure: the `venta` table stores the sale header (date/time), while `venta_detalle` stores individual product line items. This allows multiple products per sale transaction.
+</Note>
+
+## Creating Sales
+
+### Sales Creation Workflow
+
+<Steps>
+  <Step title="Navigate to Sales">
+    Go to "Ventas" in the main menu and click "Registrar Ventas"
+  </Step>
+  
+  <Step title="Auto-Create Sale Header">
+    The system automatically creates a sale record when you add the first product
+  </Step>
+  
+  <Step title="Select Product">
+    Choose a product from the dropdown (only products with stock > 0 are shown)
+  </Step>
+  
+  <Step title="Enter Quantity">
+    Specify the quantity to sell (system validates against available stock)
+  </Step>
+  
+  <Step title="Add More Products or Finalize">
+    Choose "Añadir otro producto a la venta" for more items, or "Finalizar venta" to complete
+  </Step>
+  
+  <Step title="View Total">
+    Upon finalization, a modal displays the total sale amount
+  </Step>
+</Steps>
+
+### Session-Based Sale Tracking
+
+The system uses PHP sessions to track multi-item sales:
+
+```php
+// On first product addition, create sale header
+$_SESSION['venta_id'] = {last_inserted_sale_id};
+
+// Subsequent products are added to this sale
+$venta_id = $_SESSION['venta_id'];
+
+// On finalization, clear session
+unset($_SESSION['venta_id']);
+```
+
+### Required Fields
+
+<CardGroup cols={2}>
+  <Card title="Product Selection" icon="pills">
+    Choose from products with available stock (stock > 0)
+  </Card>
+  
+  <Card title="Quantity" icon="hashtag">
+    Enter the number of units to sell (must not exceed available stock)
+  </Card>
+</CardGroup>
+
+## Stock Validation
+
+### Preventing Overselling
+
+Before processing a sale, the system validates stock availability:
+
+```sql
+SELECT stock FROM articulo WHERE id = '{articulo_id}';
+```
+
+Then checks:
+```php
+if ($cantidad <= $stock['stock']) {
+    // Proceed with sale
+} else {
+    // Display error: "Intenta vender cantidades que exceden el Stock actual"
+}
+```
+
+<Warning>
+The system blocks any sale attempt that would result in negative inventory. You cannot sell more units than are currently in stock.
+</Warning>
+
+### Available Products Filter
+
+When creating a sale, only products with positive stock are displayed:
+
+```sql
+SELECT 
+    articulo.id,
+    articulo.nombre,
+    articulo.stock,
+    laboratorio.nombre as laboratorio_nombre,
+    presentacion.nombre as presentacion_nombre
+FROM articulo, presentacion, laboratorio
+WHERE presentacion.id = articulo.presentacion_id
+  AND laboratorio.id = articulo.laboratorio_id
+  AND articulo.stock > 0
+ORDER BY laboratorio_nombre;
+```
+
+## Sale Processing
+
+### Create Sale Header
+
+On the first product addition, the system creates the sale header:
+
+```sql
+INSERT INTO venta (fecha_venta) VALUES (NOW());
+```
+
+The `fecha_venta` timestamp is automatically set to the current date and time.
+
+### Add Product to Sale
+
+For each product added:
+
+**1. Create Sale Detail Record:**
+```sql
+INSERT INTO venta_detalle (
+    articulo_id,
+    cantidad,
+    venta_id
+) VALUES (
+    '{articulo_id}',
+    '{cantidad}',
+    '{venta_id}'
+);
+```
+
+**2. Reduce Product Stock:**
+```sql
+UPDATE articulo 
+SET stock = stock - {cantidad} 
+WHERE articulo.id = {articulo_id}
+```
+
+<Note>
+Both operations occur immediately upon adding each product. The sale is processed incrementally, not as a single transaction at the end.
+</Note>
+
+## Multi-Product Sales
+
+### Adding Multiple Products
+
+When you click "Añadir otro producto a la venta":
+
+1. Current product is saved and stock is updated
+2. Session maintains the active `venta_id`
+3. Form is cleared for next product entry
+4. User can add unlimited products to the same sale
+
+### Product Display Format
+
+Products in the dropdown show:
+```
+{Product Name} (Stock {quantity} Unidades)
+```
+
+Example: `Aspirin 500mg (Stock 150 Unidades)`
+
+This helps prevent accidental overselling by showing available stock.
+
+## Finalizing Sales
+
+### Complete Sale Process
+
+When you click "Finalizar venta":
+
+1. Current product is saved and stock updated
+2. System calculates total sale amount
+3. Modal popup displays the total
+4. Session is cleared
+5. User is redirected to sales list
+
+### Sale Total Calculation
+
+The total is calculated on finalization:
+
+```sql
+SELECT SUM(cantidad * articulo.valor_venta) as total_venta
+FROM venta_detalle, articulo
+WHERE venta_id = '{venta_id}'
+  AND venta_detalle.articulo_id = articulo.id;
+```
+
+<Note>
+The sale total is calculated dynamically based on current product prices, not stored in the database. This means if you change product prices after a sale, historical sales will reflect the new prices in reports.
+</Note>
+
+## Viewing Sales
+
+### Sales List
+
+The sales index displays all completed sales with:
+
+- Sequential number (#)
+- Sale date and time
+- Total sale amount
+- Action buttons (View, Delete)
+
+### Sales Data Retrieval
+
+```sql
+SELECT id, fecha_venta FROM venta WHERE 1;
+```
+
+For each sale, the total is calculated dynamically:
+
+```sql
+SELECT SUM(cantidad * articulo.valor_venta) as total_venta
+FROM venta_detalle, articulo, venta
+WHERE venta_detalle.articulo_id = articulo.id
+  AND venta.id = venta_detalle.venta_id
+  AND venta.id = '{venta_id}';
+```
+
+## Viewing Sale Details
+
+Click the eye icon to view detailed information about a specific sale:
+
+- Sale date and time
+- List of all products sold
+- Quantity per product
+- Unit price per product
+- Line item totals
+- Grand total
+
+## Deleting Sales
+
+### Deletion Rules
+
+Sales can only be deleted if they have no associated detail records:
+
+```sql
+SELECT COUNT(*) as total 
+FROM venta_detalle 
+WHERE venta_id = {id};
+```
+
+<Warning>
+If a sale has any product line items (count > 0), deletion is blocked with the error: "Esa venta esta relacionado con al menos un artículo vendido, no se puede eliminar."
+</Warning>
+
+### Delete Workflow
+
+1. Click the trash icon next to the sale
+2. Confirm deletion in the alert dialog
+3. System checks for associated detail records
+4. If none exist, the sale header is deleted
+5. If detail records exist, an error message is displayed
+
+<Warning>
+Deleting a sale header does NOT automatically restore product stock. The system does not reverse inventory changes when sales are deleted. This is a data integrity consideration - use with caution.
+</Warning>
+
+### Successful Deletion
+
+When a sale has no details:
+
+```sql
+DELETE FROM venta WHERE id = {id};
+```
+
+## Price Calculation
+
+### Using Current Product Prices
+
+Sales do not store prices at the time of sale. Instead, they reference the product's current `valor_venta`:
+
+**Advantages:**
+- Simple data structure
+- Always reflects current pricing in reports
+- No price synchronization issues
+
+**Disadvantages:**
+- Historical sales reflect current prices, not original sale prices
+- Cannot track price changes over time
+- Profit calculations may be inaccurate if prices change
+
+<Note>
+If you need historical price accuracy, consider storing the sale price in the `venta_detalle` table as an enhancement to the system.
+</Note>
+
+## Sale States and Payment
+
+Unlike purchases (which track payment status), sales do not have a payment status field. All sales are assumed to be cash transactions completed at the point of sale.
+
+<Note>
+If you need to track credit sales or payment methods, consider adding an `estado_id` or `metodo_pago` field to the `venta` table.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Verify Stock Display" icon="eye">
+    Always check the stock quantity shown in the product dropdown before entering quantities
+  </Card>
+  
+  <Card title="Complete Multi-Item Sales" icon="clipboard-check">
+    When selling multiple products, add all items before clicking "Finalizar venta"
+  </Card>
+  
+  <Card title="Accurate Quantities" icon="calculator">
+    Double-check quantities to avoid customer disputes and inventory errors
+  </Card>
+  
+  <Card title="Session Awareness" icon="clock">
+    If you need to pause a sale, be aware that the sale header is already created and stored in session
+  </Card>
+</CardGroup>
+
+## Audit Trail
+
+All sales operations are logged:
+
+- Sale creation
+- Product additions to sales
+- Stock adjustments
+- Sale deletions
+
+The audit log captures:
+- User who performed the action
+- Timestamp
+- IP address
+- Browser information
+- Action description
+
+## Reporting Considerations
+
+### Sales Analysis
+
+The system provides sales data for:
+
+- Daily sales reports
+- Product sales velocity
+- Revenue tracking
+- Popular products analysis
+
+<Note>
+Remember that sales totals are calculated dynamically using current prices. For accurate historical analysis, consider implementing a price snapshot mechanism.
+</Note>
+
+## Inventory Impact
+
+### Real-Time Stock Updates
+
+Every sale immediately reduces inventory:
+
+```
+Before Sale: Stock = 100
+Sale Quantity: 25
+After Sale: Stock = 75
+```
+
+The change is instant and reflected in:
+- Product listings
+- Inventory reports  
+- Minimum stock alerts
+- Available products for new sales

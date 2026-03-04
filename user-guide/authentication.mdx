@@ -1,0 +1,178 @@
+---
+title: 'Authentication'
+description: 'Learn how to log in, manage sessions, and understand the authentication system in Droguería Somos Salud'
+---
+
+## Login Process
+
+The system uses a secure authentication mechanism with password hashing and optional "Remember Me" functionality.
+
+### Default Credentials
+
+For initial system access, use these default credentials:
+
+<Note>
+  **Username:** `admin`  
+  **Password:** `123456`
+  
+  It is strongly recommended to change the default password after first login.
+</Note>
+
+### Login Steps
+
+1. Navigate to the `/login` page
+2. Enter your username and password
+3. Optionally check "Recordarme" (Remember Me) to stay logged in
+4. Click "Iniciar" to submit
+
+The login form appears as follows in the source code (views/login.php:161-188):
+
+```php
+<form action="login" method="post" role="form">
+    <div class="form-group has-feedback">
+        <input type="text" class="form-control" name="username" 
+               placeholder="Usuario" required>
+        <span class="glyphicon glyphicon-user form-control-feedback"></span>
+    </div>
+    <div class="form-group has-feedback">
+        <input type="password" class="form-control" name="password" 
+               placeholder="Password" required>
+        <span class="glyphicon glyphicon-lock form-control-feedback"></span>
+    </div>
+    <div class="row">
+        <div class="col-xs-8">
+            <div class="checkbox icheck">
+                <label>
+                    <input type="checkbox" name="rememberme"> Recordarme
+                </label>
+            </div>
+        </div>
+        <div class="col-xs-4">
+            <button type="submit" class="btn btn-primary btn-block btn-flat">
+                Iniciar
+            </button>
+        </div>
+    </div>
+</form>
+```
+
+## Authentication Flow
+
+### Password Verification
+
+The system uses PHP's `password_verify()` function to securely check credentials against bcrypt-hashed passwords stored in the database (views/login.php:64):
+
+```php
+if (password_verify($password, $passHash)) {
+    // Authentication successful
+    $_SESSION['login_user'] = $username;
+    $_SESSION['loggedin'] = true;
+    $_SESSION['start'] = time();
+    $_SESSION['expire'] = $_SESSION['start'] + (5 * 60);
+    $_SESSION['rol'] = $rol;
+    $_SESSION['userid'] = $userid;
+}
+```
+
+### Session Management
+
+Once authenticated, the system creates the following session variables:
+
+| Session Variable | Description |
+|-----------------|-------------|
+| `$_SESSION['login_user']` | Username of the logged-in user |
+| `$_SESSION['loggedin']` | Boolean flag indicating active session |
+| `$_SESSION['start']` | Timestamp when session started |
+| `$_SESSION['expire']` | Session expiration time (5 minutes from start) |
+| `$_SESSION['rol']` | Role ID (1, 2, or 3) |
+| `$_SESSION['userid']` | User ID from database |
+
+<Warning>
+  Sessions expire after **5 minutes** of inactivity. Users will need to log in again after this period.
+</Warning>
+
+## Remember Me Feature
+
+When the "Recordarme" checkbox is selected, the system generates a persistent cookie that allows automatic login for up to 1 year (views/login.php:80-88):
+
+```php
+if ($_POST['rememberme'] == true) {
+    mt_srand(time());
+    $rand = mt_rand(1000000, 9999999);
+    $query = "UPDATE user SET cookie='$rand' WHERE id='$userid'";
+    $result = $db->query($query) or die($db->error . __LINE__);
+    setcookie("id", $userid, time() + (60 * 60 * 24 * 365));
+    setcookie("marca", $rand, time() + (60 * 60 * 24 * 365));
+}
+```
+
+The system stores two cookies:
+- `id`: The user's database ID
+- `marca`: A random token stored in the database for verification
+
+## Audit Trail
+
+Every successful login is recorded in the audit system (views/login.php:89):
+
+```php
+auditoria($_SERVER['REMOTE_ADDR'], $_SERVER['REQUEST_URI'], 
+          'El usuario '.$username.' inició sesión', $userid);
+```
+
+This creates a record in the `auditoria` table with:
+- IP address
+- User agent (browser information)
+- URL accessed
+- Description of the action
+- User ID
+
+## Error Messages
+
+The system provides specific error messages for failed login attempts:
+
+<CodeGroup>
+```text Invalid Password
+Su contraseña es incorrecta
+```
+
+```text User Not Found
+Su usuario no esta registrado
+```
+</CodeGroup>
+
+## Database Schema
+
+User credentials are stored in the `user` table with the following structure (db/database.sql:166-179):
+
+```sql
+CREATE TABLE IF NOT EXISTS `user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(45) DEFAULT NULL,
+  `password` varchar(60) DEFAULT NULL,
+  `nombres` varchar(45) DEFAULT NULL,
+  `apellidos` varchar(45) DEFAULT NULL,
+  `email` varchar(45) DEFAULT NULL,
+  `rol_id` int(11) DEFAULT NULL,
+  `cookie` mediumtext NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `rol` (`rol_id`),
+  CONSTRAINT `user_ibfk_1` FOREIGN KEY (`rol_id`) REFERENCES `rol` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
+
+<Tip>
+  The default admin user password hash is: `$2y$10$5/W6Yi0m8eMh3lkLP1cdreWyR6L3iyqoWP6OwSoHY2d53SIN6cXAi`  
+  This corresponds to the password: `123456`
+</Tip>
+
+## Security Considerations
+
+<Warning>
+  The current implementation is vulnerable to SQL injection. In a production environment, use prepared statements instead of string concatenation for SQL queries.
+</Warning>
+
+- Passwords are hashed using bcrypt (`password_verify()`)
+- Sessions expire after 5 minutes
+- User sessions are checked on every page load (index.php:5-8)
+- Unregistered users are redirected to `/login`

@@ -1,0 +1,295 @@
+---
+title: 'Apache Configuration'
+description: 'Configure Apache web server for Droguería Somos Salud'
+---
+
+## Overview
+
+Droguería Somos Salud uses Apache's mod_rewrite module to provide friendly URLs and route requests through the main `index.php` entry point. Proper Apache configuration is essential for the application to function correctly.
+
+## .htaccess Configuration
+
+The application includes a `.htaccess` file in the root directory that handles URL rewriting. This file must be present and readable by Apache.
+
+### .htaccess Contents
+
+```apache
+# Activar RewriteEngine
+RewriteEngine on
+RewriteCond %{SCRIPT_FILENAME} !-d
+RewriteCond %{SCRIPT_FILENAME} !-f
+RewriteRule ^login  /views/login.php [L]
+RewriteRule ^login  ?p=login [L]
+RewriteRule ^logout  ?p=logout [L]
+RewriteRule ^suppliers/create/  /suppliers/create.php [L]
+RewriteRule ^suppliers/view/  /suppliers/view.php [L]
+RewriteRule ^suppliers/edit/ /suppliers/edit.php [L]
+RewriteRule ^suppliers/  ?p=suppliers [L]
+RewriteRule ^bills/create/  /bills/create.php [L]
+RewriteRule ^bills/view/  /bills/view.php [L]
+RewriteRule ^bills/edit/ /bills/edit.php [L]
+RewriteRule ^bills/  ?p=bills [L]
+RewriteRule ^articles/create/  /articles/create.php [L]
+RewriteRule ^articles/view/  /articles/view.php [L]
+RewriteRule ^articles/edit/ /articles/edit.php [L]
+RewriteRule ^articles/  ?p=articles [L]
+RewriteRule ^laboratories/create/  /laboratories/create.php [L]
+RewriteRule ^laboratories/view/  /laboratories/view.php [L]
+RewriteRule ^laboratories/edit/ /laboratories/edit.php [L]
+RewriteRule ^laboratories/  ?p=laboratories [L]
+RewriteRule ^presentations/create/  /presentations/create.php [L]
+RewriteRule ^presentations/view/  /presentations/view.php [L]
+RewriteRule ^presentations/edit/ /presentations/edit.php [L]
+RewriteRule ^presentations/  ?p=presentations [L]
+RewriteRule ^sales/create/  /sales/create.php [L]
+RewriteRule ^sales/view/  /sales/view.php [L]
+RewriteRule ^sales/edit/ /sales/edit.php [L]
+RewriteRule ^sales/  ?p=sales [L]
+RewriteRule ^purchases/create/  /purchases/create.php [L]
+RewriteRule ^purchases/view/  /purchases/view.php [L]
+RewriteRule ^purchases/edit/ /purchases/edit.php [L]
+RewriteRule ^purchases/  ?p=purchases [L]
+RewriteRule ^users/create/  /users/create.php [L]
+RewriteRule ^users/view/  /users/view.php [L]
+RewriteRule ^users/edit/ /users/edit.php [L]
+RewriteRule ^users/  ?p=users [L]
+RewriteRule ^audit/  ?p=audit [L]
+ErrorDocument 404 /views/layouts/error404.php
+```
+
+### How URL Rewriting Works
+
+The `.htaccess` file uses the following logic:
+
+1. **RewriteEngine on** - Enables the rewriting engine
+2. **RewriteCond** directives - Check if the requested path is not a real directory or file
+3. **RewriteRule** directives - Convert friendly URLs to their corresponding PHP scripts or query parameters
+
+For example:
+- `/suppliers/` is rewritten to `?p=suppliers`
+- `/suppliers/create/` is rewritten to `/suppliers/create.php`
+- `/articles/edit/` is rewritten to `/articles/edit.php`
+
+<Warning>
+  The `.htaccess` file must be placed in the application's root directory. If mod_rewrite is not enabled or .htaccess is not being read, friendly URLs will not work.
+</Warning>
+
+## Virtual Host Configuration
+
+For production deployments, configure a dedicated virtual host for the application.
+
+### Basic Virtual Host
+
+Create a new virtual host configuration file:
+
+<Steps>
+  <Step title="Create Virtual Host File">
+    On Debian/Ubuntu:
+    ```bash
+    sudo nano /etc/apache2/sites-available/drogueria.conf
+    ```
+    
+    On CentOS/RHEL:
+    ```bash
+    sudo nano /etc/httpd/conf.d/drogueria.conf
+    ```
+  </Step>
+
+  <Step title="Add Configuration">
+    ```apache
+    <VirtualHost *:80>
+        ServerName drogueria.example.com
+        ServerAlias www.drogueria.example.com
+        DocumentRoot /var/www/html/drogueria
+        
+        <Directory /var/www/html/drogueria>
+            Options -Indexes +FollowSymLinks
+            AllowOverride All
+            Require all granted
+        </Directory>
+        
+        ErrorLog ${APACHE_LOG_DIR}/drogueria_error.log
+        CustomLog ${APACHE_LOG_DIR}/drogueria_access.log combined
+    </VirtualHost>
+    ```
+  </Step>
+
+  <Step title="Enable the Site">
+    On Debian/Ubuntu:
+    ```bash
+    sudo a2ensite drogueria.conf
+    sudo systemctl reload apache2
+    ```
+    
+    On CentOS/RHEL, the configuration is automatically loaded. Just restart:
+    ```bash
+    sudo systemctl restart httpd
+    ```
+  </Step>
+</Steps>
+
+### SSL/HTTPS Configuration
+
+For production environments, always use HTTPS:
+
+```apache
+<VirtualHost *:443>
+    ServerName drogueria.example.com
+    ServerAlias www.drogueria.example.com
+    DocumentRoot /var/www/html/drogueria
+    
+    SSLEngine on
+    SSLCertificateFile /path/to/certificate.crt
+    SSLCertificateKeyFile /path/to/private.key
+    SSLCertificateChainFile /path/to/chain.crt
+    
+    <Directory /var/www/html/drogueria>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/drogueria_ssl_error.log
+    CustomLog ${APACHE_LOG_DIR}/drogueria_ssl_access.log combined
+</VirtualHost>
+
+# Redirect HTTP to HTTPS
+<VirtualHost *:80>
+    ServerName drogueria.example.com
+    ServerAlias www.drogueria.example.com
+    Redirect permanent / https://drogueria.example.com/
+</VirtualHost>
+```
+
+## Important Configuration Settings
+
+### AllowOverride Directive
+
+<Warning>
+  The `AllowOverride All` directive is critical. Without it, Apache will ignore the `.htaccess` file and URL rewriting will fail.
+</Warning>
+
+Ensure your virtual host or main Apache configuration includes:
+
+```apache
+<Directory /var/www/html/drogueria>
+    AllowOverride All
+</Directory>
+```
+
+### DirectoryIndex
+
+The application uses `index.php` as the entry point. Ensure it's configured:
+
+```apache
+DirectoryIndex index.php index.html
+```
+
+### Security Recommendations
+
+Disable directory listing for security:
+
+```apache
+<Directory /var/www/html/drogueria>
+    Options -Indexes
+</Directory>
+```
+
+Protect sensitive files:
+
+```apache
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sql|env|config)$">
+    Require all denied
+</FilesMatch>
+```
+
+## Testing the Configuration
+
+After configuring Apache, test the configuration:
+
+<Steps>
+  <Step title="Test Configuration Syntax">
+    ```bash
+    # Debian/Ubuntu
+    sudo apache2ctl configtest
+    
+    # CentOS/RHEL
+    sudo httpd -t
+    ```
+    Should return "Syntax OK".
+  </Step>
+
+  <Step title="Restart Apache">
+    ```bash
+    # Debian/Ubuntu
+    sudo systemctl restart apache2
+    
+    # CentOS/RHEL
+    sudo systemctl restart httpd
+    ```
+  </Step>
+
+  <Step title="Test URL Rewriting">
+    Access the application and test a friendly URL:
+    ```bash
+    curl -I http://your-domain.com/suppliers/
+    ```
+    Should return HTTP 200 or redirect, not 404.
+  </Step>
+
+  <Step title="Check Error Logs">
+    If issues occur, check the error logs:
+    ```bash
+    # Debian/Ubuntu
+    tail -f /var/log/apache2/error.log
+    
+    # CentOS/RHEL
+    tail -f /var/log/httpd/error_log
+    ```
+  </Step>
+</Steps>
+
+## Performance Optimization
+
+For better performance, consider these optimizations:
+
+### Enable PHP OPcache
+
+```ini
+; In php.ini
+opcache.enable=1
+opcache.memory_consumption=128
+opcache.max_accelerated_files=10000
+opcache.revalidate_freq=2
+```
+
+### Enable Compression
+
+```apache
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+</IfModule>
+```
+
+### Browser Caching
+
+```apache
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+```
+
+## Next Steps
+
+- [Troubleshooting](/deployment/troubleshooting) - Resolve common deployment issues
+- [Requirements](/deployment/requirements) - Review system requirements

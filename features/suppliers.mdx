@@ -1,0 +1,436 @@
+---
+title: 'Supplier Management'
+description: 'Manage supplier information including company names, tax IDs (NIT), contact details, and business addresses'
+---
+
+## Overview
+
+The supplier management system maintains a comprehensive directory of pharmaceutical suppliers. Supplier records store essential business information used for purchase orders, invoicing, and communication. Each supplier must have a unique name and tax identification number (NIT).
+
+## Database Schema
+
+The `proveedor` (supplier) table stores all supplier information:
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | int(11) | PRIMARY KEY, AUTO_INCREMENT | Unique supplier identifier |
+| `nombre` | varchar(45) | NOT NULL, UNIQUE | Supplier company name |
+| `nit` | varchar(20) | NOT NULL | Tax identification number (NIT) |
+| `direccion` | varchar(45) | NOT NULL | Physical business address |
+| `telefono` | varchar(20) | NOT NULL | Contact phone number |
+| `email` | varchar(45) | NOT NULL | Email address |
+
+### Unique Constraint
+
+```sql
+UNIQUE KEY `nombre_UNIQUE` (`nombre`)
+```
+
+<Warning>
+Supplier names must be unique in the system. Two suppliers cannot share the same company name, even if they have different NITs or addresses.
+</Warning>
+
+## Creating Suppliers
+
+### Supplier Creation Workflow
+
+<Steps>
+  <Step title="Navigate to Suppliers">
+    Go to "Proveedores" in the main menu and click "Registrar Proveedores"
+  </Step>
+  
+  <Step title="Complete Supplier Form">
+    Fill in all required supplier information fields
+  </Step>
+  
+  <Step title="System Validation">
+    The system checks for duplicate names or NIT numbers
+  </Step>
+  
+  <Step title="Confirmation">
+    Upon success, the supplier is added and you're redirected to the supplier list
+  </Step>
+</Steps>
+
+### Required Fields
+
+<CardGroup cols={2}>
+  <Card title="Company Name (Nombre)" icon="building">
+    Enter the legal or trading name of the supplier company (up to 45 characters, must be unique)
+  </Card>
+  
+  <Card title="Tax ID (NIT)" icon="id-card">
+    Enter the supplier's tax identification number (up to 20 characters)
+  </Card>
+  
+  <Card title="Address (Dirección)" icon="location-dot">
+    Enter the supplier's physical business address (up to 45 characters)
+  </Card>
+  
+  <Card title="Phone (Teléfono)" icon="phone">
+    Enter the primary contact phone number (up to 20 characters)
+  </Card>
+  
+  <Card title="Email (Correo Electrónico)" icon="envelope">
+    Enter the business email address (up to 45 characters, format validated)
+  </Card>
+</CardGroup>
+
+### Validation Rules
+
+Before creating a supplier, the system validates uniqueness:
+
+```sql
+SELECT count(*) as total 
+FROM proveedor 
+WHERE nit = '{nit_proveedor}' 
+   OR nombre = '{nombre_proveedor}';
+```
+
+<Warning>
+If a supplier with the same NIT or name already exists, you'll receive an error: "Ese proveedor ya esta registrado"
+</Warning>
+
+### Insert Query
+
+When validation passes:
+
+```sql
+INSERT INTO proveedor (
+    nombre,
+    nit,
+    direccion,
+    telefono,
+    email
+) VALUES (
+    '{nombre_proveedor}',
+    '{nit_proveedor}',
+    '{direccion_proveedor}',
+    '{telefono_proveedor}',
+    '{email_proveedor}'
+);
+```
+
+## Viewing Suppliers
+
+### Supplier List
+
+The supplier index displays all suppliers with:
+
+- Sequential number (#)
+- Company name
+- NIT (Tax ID)
+- Business address
+- Phone number
+- Email address
+- Action buttons (Edit, View, Delete)
+
+### Retrieve Supplier Data
+
+```sql
+SELECT 
+    id,
+    nombre,
+    nit,
+    direccion,
+    telefono,
+    email
+FROM proveedor;
+```
+
+<Note>
+The supplier list provides a complete overview of all registered suppliers. Use this view to quickly find contact information or verify supplier details.
+</Note>
+
+## Viewing Individual Suppliers
+
+Click the eye icon to view detailed information about a specific supplier:
+
+- Complete contact information
+- Associated invoices (facturas)
+- Purchase history
+- Outstanding balances
+
+## Editing Suppliers
+
+### Edit Workflow
+
+1. Navigate to the supplier list
+2. Click the pencil icon next to the supplier
+3. Modify the desired fields
+4. Click "Guardar" to save changes
+
+### Editable Fields
+
+All supplier fields can be edited:
+- Company name
+- NIT
+- Business address
+- Phone number
+- Email address
+
+<Warning>
+If you change the supplier name, ensure it doesn't conflict with another existing supplier. The unique constraint still applies during updates.
+</Warning>
+
+## Deleting Suppliers
+
+### Deletion Rules
+
+Suppliers can only be deleted if they have no associated invoices:
+
+```sql
+SELECT COUNT(*) as total 
+FROM factura 
+WHERE proveedor_id = {id};
+```
+
+<Warning>
+Suppliers with invoice history cannot be deleted. This protects the integrity of purchase and financial records. If the count is greater than 0, deletion is blocked with the error: "Ese proveedor tiene facturas relacionadas, no puede ser eliminado."
+</Warning>
+
+### Delete Workflow
+
+<Steps>
+  <Step title="Initiate Deletion">
+    Click the trash icon next to the supplier
+  </Step>
+  
+  <Step title="Confirm Action">
+    Confirm the deletion in the alert dialog
+  </Step>
+  
+  <Step title="System Check">
+    The system checks for related invoices
+  </Step>
+  
+  <Step title="Process Result">
+    If no invoices exist, the supplier is deleted. Otherwise, an error is displayed.
+  </Step>
+</Steps>
+
+### Successful Deletion
+
+When a supplier has no dependencies:
+
+```sql
+DELETE FROM proveedor WHERE id = {id};
+```
+
+The deletion is logged in the audit trail with user information.
+
+## Supplier Relationships
+
+### Invoice Connection
+
+Suppliers are connected to the `factura` (invoice) table:
+
+```sql
+CONSTRAINT `fk_factura_proveedor` 
+    FOREIGN KEY (`proveedor_id`) REFERENCES `proveedor` (`id`)
+```
+
+One supplier can have multiple invoices:
+```
+Supplier: ABC Pharmaceuticals
+├── Invoice #1001 (2024-01-15)
+├── Invoice #1002 (2024-02-03)
+└── Invoice #1003 (2024-03-10)
+```
+
+### Purchase Traceability
+
+Through invoices, suppliers are indirectly connected to purchases:
+
+```
+Supplier → Invoice (Factura) → Purchase (Compra) → Product (Articulo)
+```
+
+This relationship enables:
+- Supplier performance analysis
+- Purchase history by supplier
+- Payment tracking
+- Supplier comparison
+
+## NIT (Tax Identification Number)
+
+### What is a NIT?
+
+NIT (Número de Identificación Tributaria) is a tax identification number used in many Latin American countries, particularly Colombia. It's similar to:
+
+- EIN (Employer Identification Number) in the United States
+- VAT number in European countries
+- Tax ID in other jurisdictions
+
+### Format and Validation
+
+The system stores NIT as a varchar(20) field but does not enforce a specific format. Common NIT formats include:
+
+- `123456789-0` (with verification digit)
+- `123456789` (without hyphen)
+- `123.456.789-0` (with dots and hyphen)
+
+<Note>
+Consider implementing format validation or standardization if your regulatory environment requires specific NIT formatting.
+</Note>
+
+## Contact Information Management
+
+### Email Validation
+
+The email field uses HTML5 validation:
+```html
+<input type="email" ... >
+```
+
+This provides basic format checking (e.g., `supplier@example.com`).
+
+### Phone Number Format
+
+The phone field accepts any format up to 20 characters:
+- `+57 300 123 4567` (international format)
+- `(123) 456-7890` (formatted)
+- `1234567890` (digits only)
+
+<Note>
+The system does not enforce phone number format. Establish internal standards for consistent data entry.
+</Note>
+
+## Address Management
+
+### Physical Address
+
+The `direccion` field stores the supplier's physical business address (up to 45 characters).
+
+<Warning>
+The 45-character limit may be restrictive for long addresses. Consider abbreviations or splitting into multiple address fields if needed.
+</Warning>
+
+### Address Best Practices
+
+- Include street address and city
+- Use standard abbreviations (St., Ave., Blvd.)
+- Include postal/zip code if space permits
+- Keep format consistent across all suppliers
+
+## Supplier Selection in Purchases
+
+### Invoice Creation
+
+When creating invoices (facturas), suppliers are selected from a dropdown:
+
+```sql
+SELECT id, nombre FROM proveedor ORDER BY nombre;
+```
+
+### Grouped Product Display
+
+In purchase forms, products are grouped by supplier through invoice selection:
+
+```
+Supplier: ABC Pharmaceuticals
+  Invoice: #1001
+    └── (Available for purchase entries)
+
+Supplier: XYZ Medical Supply
+  Invoice: #1002
+    └── (Available for purchase entries)
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Unique Naming" icon="fingerprint">
+    Use official registered business names to avoid duplicates and confusion
+  </Card>
+  
+  <Card title="Complete Information" icon="clipboard-check">
+    Fill in all fields with accurate information for effective communication
+  </Card>
+  
+  <Card title="Verify NIT" icon="shield-check">
+    Double-check tax ID numbers to ensure compliance and accurate invoicing
+  </Card>
+  
+  <Card title="Regular Updates" icon="arrows-rotate">
+    Keep supplier contact information current, especially phone and email
+  </Card>
+</CardGroup>
+
+## Data Entry Tips
+
+### Standardization
+
+Maintain consistency in data entry:
+
+**Company Names:**
+- ✅ "ABC Pharmaceuticals S.A."
+- ❌ "abc pharma", "ABC Pharma SA"
+
+**Phone Numbers:**
+- ✅ "+57 300 123 4567"
+- ✅ "(300) 123-4567"
+- ❌ Mixed formats across suppliers
+
+**Email Addresses:**
+- ✅ "ventas@abcpharma.com"
+- ✅ "compras@abcpharma.com"
+- ❌ Personal email addresses
+
+### Special Characters
+
+The system sanitizes input to prevent:
+- SQL injection
+- HTML/script injection
+- Single quotes (converted to `&#39;`)
+
+## Reporting and Analysis
+
+### Supplier Metrics
+
+Supplier data enables analysis of:
+
+- Purchase volume by supplier
+- Payment history and terms
+- Supplier reliability
+- Price comparison
+- Geographic distribution
+
+### Integration with Financial Data
+
+Suppliers connect to financial tracking through:
+
+- Invoice amounts (`factura.valor_factura`)
+- Payment status (`factura.estado_id`)
+- Invoice due dates (`factura.fecha_vencimiento_factura`)
+
+## Audit Trail
+
+All supplier operations are logged:
+
+- Supplier creation
+- Supplier modification
+- Supplier deletion (attempted and successful)
+
+The audit log captures:
+- User who performed the action
+- Timestamp
+- IP address
+- Browser information
+- Action description
+
+<Note>
+Audit logs help maintain accountability and track changes to critical supplier information over time.
+</Note>
+
+## Future Enhancements
+
+Consider these potential improvements to the supplier management system:
+
+1. **Multiple Contact Persons**: Store multiple contacts per supplier
+2. **Payment Terms**: Track default payment terms (NET 30, NET 60, etc.)
+3. **Credit Limits**: Manage maximum purchase amounts
+4. **Supplier Rating**: Track performance and reliability metrics
+5. **Document Storage**: Attach contracts, certificates, and licenses
+6. **Multiple Addresses**: Separate billing and shipping addresses
+7. **Bank Account Information**: Store payment details for electronic transfers

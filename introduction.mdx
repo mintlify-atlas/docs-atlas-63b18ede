@@ -1,0 +1,241 @@
+---
+title: Welcome to Droguería Somos Salud
+description: Complete inventory, purchase, and sales management system for small pharmacies
+mode: custom
+---
+
+<div className="relative overflow-hidden bg-gradient-to-br from-[#00A8A8] via-[#008888] to-[#007C7C] dark:from-[#007C7C] dark:via-[#006666] dark:to-[#005555]">
+  <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+  <div className="relative max-w-6xl mx-auto px-6 sm:px-8 py-16 sm:py-20 lg:py-24">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+          Droguería Somos Salud
+        </h1>
+        <p className="text-lg sm:text-xl text-white/90 max-w-2xl mb-8">
+          Complete inventory management, purchase tracking, and sales processing system designed specifically for small pharmacies. Built with PHP, MySQL, and AdminLTE.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <a
+            href="/quickstart"
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#00A8A8] font-semibold hover:bg-gray-100 transition-colors"
+          >
+            Get Started
+            <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <a
+            href="/features/inventory-management"
+            className="inline-flex items-center px-6 py-3 rounded-lg border-2 border-white/30 bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors backdrop-blur-sm"
+          >
+            Explore Features
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="relative">
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-xl rounded-2xl transform rotate-3"></div>
+          <div className="relative bg-white/20 backdrop-blur-xl rounded-2xl p-6 border border-white/20 shadow-2xl">
+            <div className="space-y-3">
+              <div className="h-3 bg-white/60 rounded w-3/4"></div>
+              <div className="h-3 bg-white/40 rounded w-full"></div>
+              <div className="h-3 bg-white/40 rounded w-5/6"></div>
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <div className="h-20 bg-white/30 rounded-lg"></div>
+                <div className="h-20 bg-white/30 rounded-lg"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-3">
+    Quick start
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Get your pharmacy management system running in minutes
+  </p>
+
+  <Steps>
+    <Step title="Download and extract">
+      Clone the repository or download the source code to your Apache web server directory.
+      
+      ```bash
+      git clone https://github.com/gfrodriguez/inventario.git
+      cd inventario
+      ```
+    </Step>
+
+    <Step title="Configure database">
+      Import the database schema and configure your connection settings.
+      
+      ```bash
+      mysql -u root -p < db/database.sql
+      ```
+      
+      Edit `db/db.php` with your MySQL credentials:
+      
+      ```php
+      $_user = 'your_username';
+      $_pass = 'your_password';
+      $db = new PDO('mysql:host=localhost;dbname=drogueria', $_user, $_pass);
+      ```
+    </Step>
+
+    <Step title="Enable mod_rewrite">
+      The system requires Apache's mod_rewrite module for friendly URLs. Enable it if not already active:
+      
+      ```bash
+      sudo a2enmod rewrite
+      sudo systemctl restart apache2
+      ```
+    </Step>
+
+    <Step title="Log in and start managing">
+      Navigate to your installation URL and log in with the default admin account:
+      
+      - **Username:** admin
+      - **Password:** 123456
+      
+      <Warning>
+        Change the default password immediately after your first login for security.
+      </Warning>
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-3">
+    Key features
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Everything you need to manage your pharmacy operations
+  </p>
+
+  <CardGroup cols={2}>
+    <Card title="Inventory management" icon="boxes-stacked" href="/features/inventory-management">
+      Track stock levels, set minimum stock alerts, and manage product information across your entire catalog.
+    </Card>
+    <Card title="Purchase orders" icon="cart-shopping" href="/features/purchases">
+      Create and manage purchase orders, track supplier invoices, and monitor payment due dates.
+    </Card>
+    <Card title="Sales tracking" icon="receipt" href="/features/sales">
+      Process sales transactions, track revenue, and maintain detailed sales history.
+    </Card>
+    <Card title="Supplier management" icon="truck" href="/features/suppliers">
+      Maintain supplier contact information and track all purchases by supplier.
+    </Card>
+    <Card title="Role-based access" icon="users-gear" href="/user-guide/roles-permissions">
+      Three role levels (Super Admin, Admin, User) with granular permission control.
+    </Card>
+    <Card title="Audit logging" icon="clipboard-list" href="/administration/audit-logs">
+      Complete audit trail of all user actions with IP address and browser tracking.
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-3">
+    Explore by topic
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Dive into specific areas of the system
+  </p>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <a href="/user-guide/dashboard" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#00A8A8] dark:hover:border-[#00A8A8] overflow-hidden transition-colors no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+          Dashboard overview
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Learn how to use the main dashboard, view metrics, and track invoice expiration dates.
+        </p>
+        <span className="text-sm font-medium text-[#00A8A8] group-hover:text-[#00D4D4] inline-flex items-center">
+          View guide
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </span>
+      </div>
+    </a>
+
+    <a href="/database/overview" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#00A8A8] dark:hover:border-[#00A8A8] overflow-hidden transition-colors no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+          Database schema
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Understand the database structure, table relationships, and data model.
+        </p>
+        <span className="text-sm font-medium text-[#00A8A8] group-hover:text-[#00D4D4] inline-flex items-center">
+          Explore schema
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </span>
+      </div>
+    </a>
+
+    <a href="/deployment/requirements" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#00A8A8] dark:hover:border-[#00A8A8] overflow-hidden transition-colors no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+          Deployment guide
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Server requirements, Apache configuration, and production deployment best practices.
+        </p>
+        <span className="text-sm font-medium text-[#00A8A8] group-hover:text-[#00D4D4] inline-flex items-center">
+          Deploy now
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </span>
+      </div>
+    </a>
+
+    <a href="/administration/user-management" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#00A8A8] dark:hover:border-[#00A8A8] overflow-hidden transition-colors no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+          User administration
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Create users, assign roles, and manage access permissions across your team.
+        </p>
+        <span className="text-sm font-medium text-[#00A8A8] group-hover:text-[#00D4D4] inline-flex items-center">
+          Manage users
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </span>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl bg-gradient-to-br from-[#00A8A8] to-[#007C7C] dark:from-[#007C7C] dark:to-[#005555] p-8 sm:p-10 border border-[#00D4D4]/20">
+    <div className="max-w-3xl">
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+        Ready to get started?
+      </h2>
+      <p className="text-lg text-white/90 mb-6">
+        Follow our quickstart guide to set up your pharmacy management system and start managing your inventory, purchases, and sales today.
+      </p>
+      <a
+        href="/quickstart"
+        className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#00A8A8] font-semibold hover:bg-gray-100 transition-colors"
+      >
+        Start now
+        <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>

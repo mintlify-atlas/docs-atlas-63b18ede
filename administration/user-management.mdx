@@ -1,0 +1,151 @@
+---
+title: User Management
+description: Learn how to create users, assign roles, and manage user accounts in the Droguería Somos Salud system
+---
+
+## Overview
+
+The User Management module allows administrators to create, edit, and manage user accounts within the pharmacy inventory system. Each user is assigned a specific role that determines their access level and permissions.
+
+## User Database Schema
+
+The system uses the following database structure for user management:
+
+### User Table (`user`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | int(11) | Primary key, auto-increment |
+| `username` | varchar(45) | Unique username for login |
+| `password` | varchar(60) | Encrypted password (BCrypt) |
+| `nombres` | varchar(45) | First name(s) |
+| `apellidos` | varchar(45) | Last name(s) |
+| `email` | varchar(45) | Email address |
+| `rol_id` | int(11) | Foreign key to rol table |
+| `cookie` | mediumtext | Session cookie storage |
+| `created_at` | timestamp | Account creation timestamp |
+
+### Role Table (`rol`)
+
+The system includes three predefined roles:
+
+| ID | Role Name | Description |
+|----|-----------|-------------|
+| 1 | Super Admin | Full system access |
+| 2 | Admin | Administrative access |
+| 3 | User | Standard user access |
+
+## Creating a New User
+
+To create a new user account:
+
+<Steps>
+  <Step title="Navigate to Users">
+    Access the Users module from the main navigation menu
+  </Step>
+  
+  <Step title="Click Register Users">
+    Click the "Registrar Usuarios" button to open the user creation form
+  </Step>
+  
+  <Step title="Fill in User Details">
+    Complete all required fields:
+    - **Nombres**: User's first name(s)
+    - **Apellidos**: User's last name(s)
+    - **Username**: Unique username for login
+    - **Contraseña**: Secure password
+    - **Email**: Valid email address
+    - **Rol**: Select user role (Super Admin, Admin, or User)
+  </Step>
+  
+  <Step title="Save User">
+    Click the "Guardar" button to create the user account
+  </Step>
+</Steps>
+
+<Note>
+  Usernames must be unique. If you attempt to create a user with an existing username, the system will display a warning message.
+</Note>
+
+## Editing User Accounts
+
+To modify an existing user account:
+
+1. Navigate to the Users list
+2. Click the edit icon (pencil) next to the user you want to modify
+3. Update the desired fields:
+   - First name, last name, email, or username
+   - Role assignment
+   - Password (leave blank to keep existing password)
+4. Click "Guardar" to save changes
+
+<Warning>
+  When editing a user, leave the password field empty if you don't want to change the current password. Any value entered will trigger a password update.
+</Warning>
+
+## Viewing User Details
+
+To view detailed information about a user:
+
+- Click the view icon (eye) next to any user in the list
+- This displays the complete user profile including:
+  - Full name and contact information
+  - Assigned role
+  - Account creation date
+  - Username and email
+
+## Deleting Users
+
+To remove a user account:
+
+<Steps>
+  <Step title="Locate User">
+    Find the user in the users list
+  </Step>
+  
+  <Step title="Click Delete">
+    Click the delete icon (trash) next to the user
+  </Step>
+  
+  <Step title="Confirm Deletion">
+    A confirmation dialog will appear asking "¿Está seguro de eliminar este usuario?"
+  </Step>
+  
+  <Step title="Confirm Action">
+    Click "¡Sí!" to permanently delete the user account
+  </Step>
+</Steps>
+
+<Warning>
+  User deletion is permanent and cannot be undone. All user data will be removed from the system.
+</Warning>
+
+## User List Display
+
+The users table displays the following information:
+
+- **#**: Sequential number
+- **Usuario**: Username
+- **Nombres**: First name
+- **Apellidos**: Last name
+- **Email**: Email address
+- **Rol**: Assigned role
+- **Actions**: Edit, view, and delete buttons
+
+## Password Security
+
+All user passwords are:
+- Encrypted using BCrypt hashing algorithm
+- Stored securely in the database
+- Never displayed in plain text
+- Protected with PHP's `password_hash()` function using `PASSWORD_BCRYPT`
+
+## Audit Trail
+
+All user management actions are automatically logged in the audit system:
+
+- User creation
+- User modification
+- User deletion
+
+Each action records the administrator who performed it, along with timestamp, IP address, and browser information.

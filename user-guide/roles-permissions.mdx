@@ -1,0 +1,318 @@
+---
+title: 'Roles and Permissions'
+description: 'Understand the three user roles in Droguería Somos Salud and their respective permissions'
+---
+
+## Overview
+
+The system implements a role-based access control (RBAC) system with three distinct user roles, each with different levels of access and permissions.
+
+## Role Types
+
+The three roles are defined in the database (db/database.sql:159-162):
+
+```sql
+INSERT IGNORE INTO `rol` (`id`, `nombre`) VALUES
+    (1, 'Super Admin'),
+    (2, 'Admin'),
+    (3, 'User');
+```
+
+<CardGroup cols={3}>
+  <Card title="Super Admin" icon="user-shield" color="#dd4b39">
+    Role ID: 1  
+    Full system access
+  </Card>
+  <Card title="Admin" icon="user-tie" color="#f39c12">
+    Role ID: 2  
+    Full system access
+  </Card>
+  <Card title="User" icon="user" color="#00a65a">
+    Role ID: 3  
+    Limited access
+  </Card>
+</CardGroup>
+
+## Role Assignment
+
+Roles are assigned to users through the `rol_id` field in the user table and checked during authentication (views/login.php:70, 77):
+
+```php
+$rol = $row['rol_id'];
+// ...
+$_SESSION['rol'] = $rol;
+```
+
+## Permission Matrix
+
+Based on the routing logic in index.php, here's a comprehensive breakdown of what each role can access:
+
+### Super Admin (rol = 1)
+
+<Accordion title="Full Access - All Modules">
+Super Admins have unrestricted access to all system features. The routing block (index.php:10-106) grants access to:
+
+**Bills Management** (`/bills/`)
+- View all bills
+- Create new bills
+- Edit bills
+- View bill details
+
+**Articles/Products** (`/articles/`)
+- View all articles
+- Create articles
+- Edit articles
+- View article details
+
+**Laboratories** (`/laboratories/`)
+- View all laboratories
+- Create laboratories
+- Edit laboratories
+- View laboratory details
+
+**Presentations** (`/presentations/`)
+- View all presentations
+- Create presentations
+- Edit presentations
+- View presentation details
+
+**Purchases** (`/purchases/`)
+- View all purchases
+- Create purchases
+- Edit purchases
+- View purchase details
+
+**Sales** (`/sales/`)
+- View all sales
+- Create sales
+- Edit sales
+- View sale details
+
+**Suppliers** (`/suppliers/`)
+- View all suppliers
+- Create suppliers
+- Edit suppliers
+- View supplier details
+
+**User Management** (`/users/`)
+- View all users
+- Create users
+- Edit users
+- View user details
+
+**Audit Trail** (`/audit/`)
+- View audit logs
+- View audit details
+
+**Dashboard** (`/`)
+- Access to main dashboard
+
+**Logout** (`/logout`)
+- Log out functionality
+</Accordion>
+
+### Admin (rol = 2)
+
+<Accordion title="Full Access - Identical to Super Admin">
+Despite the naming convention, Admins have **identical permissions** to Super Admins. The routing logic (index.php:107-203) is an exact duplicate:
+
+```php
+} else if ($_SESSION['rol'] == "2") {
+    include 'functions/functions.php';
+    include 'views/layouts/header.php';
+    $url = $_SERVER['REQUEST_URI'];
+    if ($url == "/") {
+        include 'views/dashboard.php';
+    } else if (stripos($url, "bills/create")) {
+        include('views/bills/create.php');
+    }
+    // ... [identical routing to Super Admin]
+```
+
+Admins can access all the same modules as Super Admins, including:
+- Bills, Articles, Laboratories, Presentations
+- Purchases, Sales, Suppliers
+- User Management
+- Audit Trail
+- Dashboard
+</Accordion>
+
+<Note>
+In the current implementation, **Super Admin** and **Admin** roles have identical permissions. The distinction exists in the database schema but is not enforced in the code.
+</Note>
+
+### User (rol = 3)
+
+<Accordion title="Restricted Access - Limited Modules">
+Users have access to most operational modules but are **restricted from User Management and Audit Trail**. The routing block (index.php:204-292) shows the differences:
+
+**Full Access Modules:**
+- Bills Management (view, create, edit)
+- Articles/Products (view, create, edit)
+- Laboratories (view, create, edit)
+- Presentations (view, create, edit)
+- Purchases (view, create, edit)
+- Sales (view, create, edit)
+- Suppliers (view, create, edit)
+- Dashboard
+- Logout
+
+**Limited Access:**
+
+Users can only **view** their own user profile but cannot access the user management section (index.php:280-284):
+
+```php
+} else if (stripos($url, "users/view")) {
+    $id = substr($url, 12);
+    require 'views/users/view.php';
+} else if (stripos($url, "users")) {
+    include('views/layouts/withoutauthorization.php');
+```
+
+**Blocked Modules:**
+
+When Users attempt to access restricted areas, they see an unauthorized access page:
+
+```php
+} else if (stripos($url, "audit")) {
+    include('views/layouts/withoutauthorization.php');
+```
+
+Users **cannot** access:
+- `/users/` - User listing page
+- `/users/create` - Create new users
+- `/users/edit` - Edit existing users
+- `/audit/` - Audit trail listing
+- `/audit/view` - Audit details
+</Accordion>
+
+## Access Control Implementation
+
+The system implements access control through session-based routing:
+
+### Session Check
+
+Every page checks for an active session (index.php:3-8):
+
+```php
+ob_start();
+session_start();
+if (!isset($_SESSION['rol']) || $_SESSION['rol'] == "" || $_SESSION['rol'] == "Sin registrar") {
+    $_SESSION['rol'] = "Sin registrar";
+    header('location:/login');
+}
+```
+
+<Warning>
+Unauthenticated users are immediately redirected to the login page.
+</Warning>
+
+### Role-Based Routing
+
+The index.php file uses a three-part conditional structure:
+
+```php
+if ($_SESSION['rol'] == "1") {
+    // Super Admin routes
+} else if ($_SESSION['rol'] == "2") {
+    // Admin routes
+} else if ($_SESSION['rol'] == "3") {
+    // User routes
+}
+```
+
+## Permission Summary Table
+
+| Module | Super Admin | Admin | User |
+|--------|-------------|-------|------|
+| Dashboard | ✓ | ✓ | ✓ |
+| Bills | Full CRUD | Full CRUD | Full CRUD |
+| Articles | Full CRUD | Full CRUD | Full CRUD |
+| Laboratories | Full CRUD | Full CRUD | Full CRUD |
+| Presentations | Full CRUD | Full CRUD | Full CRUD |
+| Purchases | Full CRUD | Full CRUD | Full CRUD |
+| Sales | Full CRUD | Full CRUD | Full CRUD |
+| Suppliers | Full CRUD | Full CRUD | Full CRUD |
+| Users | Full CRUD | Full CRUD | View Only* |
+| Audit Trail | Full Access | Full Access | No Access |
+| Logout | ✓ | ✓ | ✓ |
+
+<Info>
+*Users can only view individual user profiles when directly accessing `/users/view/{id}`, but cannot access the user list or create/edit pages.
+</Info>
+
+## Database Structure
+
+The role system is defined in the `rol` table (db/database.sql:151-163):
+
+```sql
+CREATE TABLE IF NOT EXISTS `rol` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+```
+
+Users are linked to roles via foreign key (db/database.sql:173, 178):
+
+```sql
+`rol_id` int(11) DEFAULT NULL,
+-- ...
+CONSTRAINT `user_ibfk_1` FOREIGN KEY (`rol_id`) REFERENCES `rol` (`id`)
+```
+
+## Authorization Page
+
+When users attempt to access restricted resources, they are shown an unauthorized access page (index.php:284, 286):
+
+```php
+include('views/layouts/withoutauthorization.php');
+```
+
+<Warning>
+There is no built-in role management interface. Role assignments must be updated directly in the database through the `user` table's `rol_id` field.
+</Warning>
+
+## Security Considerations
+
+<CardGroup cols={2}>
+  <Card title="Strengths" icon="shield-check" color="#00a65a">
+    - Session-based authentication
+    - Password hashing with bcrypt
+    - Centralized routing control
+    - Audit logging for Super Admin/Admin
+  </Card>
+  <Card title="Areas for Improvement" icon="triangle-exclamation" color="#dd4b39">
+    - No middleware or proper ACL library
+    - Role checking only at routing level
+    - No granular permission system
+    - SQL injection vulnerabilities
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Assign Appropriate Roles">
+    Give users the minimum role required for their job function
+  </Step>
+  <Step title="Regular Audits">
+    Super Admins should regularly review the audit trail for suspicious activity
+  </Step>
+  <Step title="Protect Super Admin Accounts">
+    Limit the number of Super Admin accounts to only those who absolutely need it
+  </Step>
+  <Step title="Monitor User Access">
+    Even though Users have broad access, they cannot modify system users or view audit logs
+  </Step>
+</Steps>
+
+## Future Enhancements
+
+Consider implementing:
+
+1. **Granular Permissions**: Add permission-level control beyond just roles
+2. **Role Management UI**: Create an interface for managing roles without database access
+3. **Permission Checks**: Add permission validation at the function level, not just routing
+4. **Audit All Roles**: Extend audit logging to track User role activities as well
+5. **Different Admin Levels**: Differentiate Super Admin and Admin with distinct capabilities

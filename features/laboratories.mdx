@@ -1,0 +1,423 @@
+---
+title: 'Laboratory Management'
+description: 'Manage pharmaceutical laboratory catalog, track manufacturers, and organize products by manufacturing origin'
+---
+
+## Overview
+
+The laboratory management system maintains a catalog of pharmaceutical manufacturers and laboratories. Each laboratory represents a company that produces pharmaceutical products. This classification helps organize the product catalog and enables reporting by manufacturer.
+
+## Database Schema
+
+The `laboratorio` (laboratory) table stores manufacturer information:
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | int(11) | PRIMARY KEY, AUTO_INCREMENT | Unique laboratory identifier |
+| `nombre` | varchar(45) | NULL allowed | Laboratory/manufacturer name |
+
+<Note>
+The laboratory table has a simple structure with only an ID and name field. This lightweight design makes it easy to manage a catalog of pharmaceutical manufacturers.
+</Note>
+
+## Creating Laboratories
+
+### Laboratory Creation Workflow
+
+<Steps>
+  <Step title="Navigate to Laboratories">
+    Go to "Laboratorio" in the main menu and click "Registrar Laboratorio"
+  </Step>
+  
+  <Step title="Enter Laboratory Name">
+    Fill in the laboratory/manufacturer name
+  </Step>
+  
+  <Step title="Save">
+    Click "Guardar" to create the laboratory record
+  </Step>
+  
+  <Step title="Confirmation">
+    You'll be redirected to the laboratory list showing the new entry
+  </Step>
+</Steps>
+
+### Required Fields
+
+<Card title="Laboratory Name (Nombre)" icon="flask">
+  Enter the name of the pharmaceutical laboratory or manufacturer (up to 45 characters)
+</Card>
+
+### Common Laboratory Examples
+
+- **Bayer**: German multinational pharmaceutical company
+- **Pfizer**: American pharmaceutical corporation
+- **Novartis**: Swiss multinational pharmaceutical company
+- **Genfar**: Colombian pharmaceutical manufacturer
+- **Tecnoquímicas**: Colombian pharmaceutical company
+- **MK (Medicamentos y Compuestos)**: Colombian pharmaceutical laboratory
+
+### Insert Query
+
+When creating a laboratory:
+
+```sql
+INSERT INTO laboratorio (nombre) 
+VALUES ('{nombre}');
+```
+
+<Note>
+Unlike suppliers, the system does not enforce unique laboratory names in the database schema. However, it's recommended to avoid creating duplicate laboratory entries to maintain data integrity.
+</Note>
+
+## Viewing Laboratories
+
+### Laboratory List
+
+The laboratory index displays all laboratories with:
+
+- Sequential number (#)
+- Laboratory name
+- Action buttons (Edit, View, Delete)
+
+### Retrieve Laboratory Data
+
+```sql
+SELECT * FROM laboratorio WHERE 1;
+```
+
+The simple query retrieves all laboratory records, as the table contains minimal fields.
+
+## Viewing Individual Laboratories
+
+Click the eye icon to view detailed information about a specific laboratory:
+
+- Laboratory name
+- Associated products
+- Number of products by laboratory
+- Product stock levels by manufacturer
+
+<Note>
+The detail view helps you understand which products are supplied by each laboratory, useful for inventory planning and supplier negotiations.
+</Note>
+
+## Editing Laboratories
+
+### Edit Workflow
+
+1. Navigate to the laboratory list
+2. Click the pencil icon next to the laboratory
+3. Modify the laboratory name
+4. Click "Guardar" to save changes
+
+### Editable Field
+
+- Laboratory name (`nombre`)
+
+<Warning>
+Changing a laboratory name affects how it displays across the entire system, including product listings, purchase records, and reports. Ensure the change is intentional and communicated to users.
+</Warning>
+
+## Deleting Laboratories
+
+### Deletion Rules
+
+Laboratories can only be deleted if they have no associated products:
+
+```sql
+SELECT COUNT(*) as total 
+FROM articulo 
+WHERE laboratorio_id = {id};
+```
+
+<Warning>
+Laboratories with associated products cannot be deleted. This protects data integrity and prevents orphaned product records. If the count is greater than 0, deletion is blocked with the error: "Ese laboratorio esta relacionado con al menos un artículo, no puede ser eliminado."
+</Warning>
+
+### Delete Workflow
+
+<Steps>
+  <Step title="Initiate Deletion">
+    Click the trash icon next to the laboratory
+  </Step>
+  
+  <Step title="Confirm Action">
+    Confirm the deletion in the alert dialog
+  </Step>
+  
+  <Step title="System Check">
+    The system checks for related products
+  </Step>
+  
+  <Step title="Process Result">
+    If no products exist, the laboratory is deleted. Otherwise, an error is displayed.
+  </Step>
+</Steps>
+
+### Successful Deletion
+
+When a laboratory has no dependencies:
+
+```sql
+DELETE FROM laboratorio WHERE id = {id};
+```
+
+The deletion is logged in the audit trail with user information.
+
+## Laboratory Relationships
+
+### Product Connection
+
+Laboratories are connected to products through a foreign key:
+
+```sql
+-- In articulo table
+CONSTRAINT `fk_articulo_laboratorio1` 
+    FOREIGN KEY (`laboratorio_id`) REFERENCES `laboratorio` (`id`)
+```
+
+One laboratory can have multiple products:
+
+```
+Laboratory: Bayer
+├── Product: Aspirin 500mg Tablets
+├── Product: Ciprofloxacin 500mg Tablets
+└── Product: Vitamin C 1000mg Tablets
+```
+
+### Product Organization
+
+Products are organized by laboratory in several views:
+
+**Product Creation Form:**
+```sql
+SELECT id as laboratorio_id, nombre as laboratorio_nombre 
+FROM laboratorio 
+WHERE 1;
+```
+
+**Product Listing:**
+```sql
+SELECT 
+    laboratorio.nombre as laboratorio,
+    articulo.nombre,
+    ...
+FROM articulo, laboratorio
+WHERE laboratorio_id = laboratorio.id;
+```
+
+**Purchase Product Selection:**
+Products are grouped by laboratory and presentation for easy selection during purchase entry.
+
+## Use Cases
+
+### Product Catalog Organization
+
+Laboratories help organize large product catalogs:
+
+```
+Pharmacy Inventory (1,000+ products)
+├── Bayer (50 products)
+├── Pfizer (30 products)
+├── Genfar (120 products)
+└── Tecnoquímicas (80 products)
+```
+
+### Manufacturer Analysis
+
+Laboratory classification enables:
+
+- **Sales by Manufacturer**: Which laboratories' products sell best?
+- **Stock Distribution**: How is inventory distributed across laboratories?
+- **Purchase Patterns**: Which manufacturers do you order from most frequently?
+- **Margin Analysis**: Which laboratories provide the best profit margins?
+
+### Supplier Relationships
+
+While the system doesn't directly link laboratories to suppliers, this relationship often exists in practice:
+
+- One supplier may distribute products from multiple laboratories
+- One laboratory may work with multiple distributors
+- Understanding these relationships helps with procurement strategy
+
+<Note>
+If your business needs to track laboratory-supplier relationships formally, consider adding a linking table between laboratories and suppliers.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Official Names" icon="certificate">
+    Use official registered laboratory names for consistency and professionalism
+  </Card>
+  
+  <Card title="Avoid Duplicates" icon="clone">
+    Check existing laboratories before creating new ones to prevent duplicate entries
+  </Card>
+  
+  <Card title="Standardize Naming" icon="list-check">
+    Establish naming conventions (e.g., "Bayer" not "BAYER" or "bayer")
+  </Card>
+  
+  <Card title="Research New Labs" icon="magnifying-glass">
+    Verify laboratory information before adding to ensure accuracy
+  </Card>
+</CardGroup>
+
+## Data Entry Tips
+
+### Naming Conventions
+
+Maintain consistency in laboratory names:
+
+**Correct:**
+- ✅ "Bayer"
+- ✅ "Pfizer Inc."
+- ✅ "Novartis AG"
+
+**Avoid:**
+- ❌ "BAYER" (all caps)
+- ❌ "bayer" (lowercase)
+- ❌ "Bayer Lab" and "Bayer" (duplicates with variations)
+
+### Character Limit
+
+The name field is limited to 45 characters. For laboratories with long official names, use common abbreviations:
+
+- ✅ "GlaxoSmithKline" or "GSK"
+- ✅ "Bristol-Myers Squibb" or "BMS"
+
+### Special Characters
+
+The system handles special characters in laboratory names:
+
+- Hyphens: "Bristol-Myers Squibb" ✅
+- Parentheses: "Merck (MSD)" ✅
+- Ampersands: "Johnson & Johnson" ✅
+
+## Reporting and Analytics
+
+### Laboratory Performance Reports
+
+Use laboratory data for business intelligence:
+
+**Top Performing Laboratories:**
+```sql
+SELECT 
+    laboratorio.nombre,
+    COUNT(articulo.id) as total_products,
+    SUM(articulo.stock) as total_stock
+FROM laboratorio
+LEFT JOIN articulo ON laboratorio.id = articulo.laboratorio_id
+GROUP BY laboratorio.id
+ORDER BY total_products DESC;
+```
+
+**Sales by Laboratory:**
+```sql
+SELECT 
+    laboratorio.nombre,
+    SUM(venta_detalle.cantidad * articulo.valor_venta) as total_sales
+FROM laboratorio
+JOIN articulo ON laboratorio.id = articulo.laboratorio_id
+JOIN venta_detalle ON articulo.id = venta_detalle.articulo_id
+GROUP BY laboratorio.id
+ORDER BY total_sales DESC;
+```
+
+### Inventory Distribution
+
+Analyze how your inventory is distributed across laboratories to inform purchasing decisions and shelf space allocation.
+
+## Product Dependencies
+
+Before creating products, you must have at least one laboratory in the system. The product creation form requires laboratory selection:
+
+```php
+<select name='laboratorio_id' required>
+    <option value=''>Seleccione un Laboratorio</option>
+    <?php while ($lab = $laboratories->fetch()): ?>
+        <option value='<?= $lab['laboratorio_id'] ?>'>
+            <?= $lab['laboratorio_nombre'] ?>
+        </option>
+    <?php endwhile; ?>
+</select>
+```
+
+<Warning>
+If you attempt to create a product without any laboratories in the system, the form will display an empty dropdown and prevent submission.
+</Warning>
+
+## System Setup Order
+
+When implementing the system, create laboratories early in the setup process:
+
+<Steps>
+  <Step title="Create Laboratories">
+    Add all pharmaceutical manufacturers you work with
+  </Step>
+  
+  <Step title="Create Presentations">
+    Add product presentation types (tablets, syrups, etc.)
+  </Step>
+  
+  <Step title="Create Products">
+    Products require both laboratory and presentation selection
+  </Step>
+  
+  <Step title="Create Suppliers">
+    Add suppliers who provide products from various laboratories
+  </Step>
+</Steps>
+
+## International vs. Local Laboratories
+
+### International Manufacturers
+
+Major global pharmaceutical companies:
+- Bayer (Germany)
+- Pfizer (USA)
+- Novartis (Switzerland)
+- Sanofi (France)
+- GlaxoSmithKline (UK)
+
+### Local/Regional Laboratories
+
+Country-specific manufacturers (e.g., Colombia):
+- Genfar
+- Tecnoquímicas
+- Lafrancol
+- Procaps
+- MK (Medicamentos y Compuestos)
+
+<Note>
+Track both international and local laboratories to support a diverse product catalog and enable sourcing flexibility.
+</Note>
+
+## Audit Trail
+
+All laboratory operations are logged:
+
+- Laboratory creation
+- Laboratory name changes
+- Laboratory deletion (attempted and successful)
+
+The audit log captures:
+- User who performed the action
+- Timestamp
+- IP address
+- Browser information
+- Action description
+
+## Future Enhancements
+
+Consider these potential improvements:
+
+1. **Country of Origin**: Track where each laboratory is headquartered
+2. **Contact Information**: Store laboratory contact details for technical inquiries
+3. **Certifications**: Track regulatory approvals and quality certifications
+4. **Product Lines**: Categorize products into therapeutic areas
+5. **Logo/Branding**: Store laboratory logos for reports and product displays
+6. **Website/Resources**: Link to laboratory websites and product information
+7. **Supplier Relationships**: Formally link laboratories to their distributors
+8. **Quality Metrics**: Track product quality and recall history by laboratory

@@ -1,0 +1,438 @@
+---
+title: 'Troubleshooting'
+description: 'Common deployment issues and solutions for Droguería Somos Salud'
+---
+
+## Overview
+
+This guide covers common deployment issues and their solutions. Most problems fall into three categories: mod_rewrite issues, database connection errors, and file permission problems.
+
+## mod_rewrite Issues
+
+### Friendly URLs Not Working (404 Errors)
+
+**Symptoms:**
+- Accessing `/suppliers/` or other friendly URLs returns 404 errors
+- Only `index.php` works when accessed directly
+- Error logs show "File not found" errors
+
+**Solutions:**
+
+<Steps>
+  <Step title="Verify mod_rewrite is Enabled">
+    Check if the module is loaded:
+    ```bash
+    # Debian/Ubuntu
+    apache2ctl -M | grep rewrite
+    
+    # CentOS/RHEL
+    httpd -M | grep rewrite
+    ```
+    
+    If not shown, enable it:
+    ```bash
+    # Debian/Ubuntu
+    sudo a2enmod rewrite
+    sudo systemctl restart apache2
+    
+    # CentOS/RHEL - Edit httpd.conf
+    sudo nano /etc/httpd/conf/httpd.conf
+    # Uncomment: LoadModule rewrite_module modules/mod_rewrite.so
+    sudo systemctl restart httpd
+    ```
+  </Step>
+
+  <Step title="Check AllowOverride Setting">
+    The `.htaccess` file requires `AllowOverride All` to work.
+    
+    Edit your virtual host or main Apache configuration:
+    ```apache
+    <Directory /var/www/html/drogueria>
+        AllowOverride All
+    </Directory>
+    ```
+    
+    Then restart Apache:
+    ```bash
+    sudo systemctl restart apache2  # or httpd
+    ```
+  </Step>
+
+  <Step title="Verify .htaccess File Exists">
+    Ensure the `.htaccess` file is in the application root:
+    ```bash
+    ls -la /var/www/html/drogueria/.htaccess
+    ```
+    
+    If missing, recreate it with the proper content from the source repository.
+  </Step>
+
+  <Step title="Check File Permissions">
+    Ensure Apache can read the `.htaccess` file:
+    ```bash
+    sudo chmod 644 /var/www/html/drogueria/.htaccess
+    sudo chown www-data:www-data /var/www/html/drogueria/.htaccess
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  If `AllowOverride` is set to `None`, Apache will completely ignore the `.htaccess` file, and URL rewriting will fail silently.
+</Warning>
+
+### RewriteBase Issues
+
+**Symptom:** URLs are being rewritten incorrectly, redirecting to wrong paths.
+
+**Solution:**
+
+If the application is installed in a subdirectory (e.g., `/var/www/html/subdirectory/drogueria`), add a `RewriteBase` directive to `.htaccess`:
+
+```apache
+RewriteEngine on
+RewriteBase /subdirectory/drogueria/
+RewriteCond %{SCRIPT_FILENAME} !-d
+RewriteCond %{SCRIPT_FILENAME} !-f
+# ... rest of rules
+```
+
+### Error 500 on All Pages
+
+**Symptom:** All pages return HTTP 500 Internal Server Error after enabling mod_rewrite.
+
+**Solutions:**
+
+<Accordion title="Check Apache Error Logs">
+  ```bash
+  # Debian/Ubuntu
+  sudo tail -n 50 /var/log/apache2/error.log
+  
+  # CentOS/RHEL
+  sudo tail -n 50 /var/log/httpd/error_log
+  ```
+  
+  Look for errors like:
+  - "Invalid command 'RewriteEngine'" - mod_rewrite not enabled
+  - ".htaccess: Invalid command" - Syntax error in .htaccess
+</Accordion>
+
+<Accordion title="Test .htaccess Syntax">
+  Temporarily rename `.htaccess` to test if it's causing the issue:
+  ```bash
+  sudo mv .htaccess .htaccess.bak
+  ```
+  
+  If the site works, there's a syntax error in `.htaccess`. Review and fix the file.
+</Accordion>
+
+## Database Connection Errors
+
+### Cannot Connect to MySQL Database
+
+**Symptoms:**
+- Application shows "Database connection failed" error
+- Login page displays but cannot authenticate
+- Error logs show PDO connection errors
+
+**Solutions:**
+
+<Steps>
+  <Step title="Verify MySQL is Running">
+    ```bash
+    sudo systemctl status mysql    # Debian/Ubuntu
+    # or
+    sudo systemctl status mysqld   # CentOS/RHEL
+    ```
+    
+    If not running, start it:
+    ```bash
+    sudo systemctl start mysql     # or mysqld
+    sudo systemctl enable mysql    # Enable on boot
+    ```
+  </Step>
+
+  <Step title="Check Database Credentials">
+    Verify the database configuration file (typically `config.php` or similar):
+    ```php
+    // Check these settings match your MySQL configuration
+    $host = 'localhost';
+    $database = 'drogueria_db';
+    $username = 'drogueria_user';
+    $password = 'your_password';
+    ```
+  </Step>
+
+  <Step title="Test Database Connection">
+    Try connecting manually:
+    ```bash
+    mysql -u drogueria_user -p drogueria_db
+    ```
+    
+    If this fails, the credentials are incorrect or the user doesn't have proper permissions.
+  </Step>
+
+  <Step title="Grant Proper Permissions">
+    If the user exists but can't connect:
+    ```sql
+    GRANT ALL PRIVILEGES ON drogueria_db.* TO 'drogueria_user'@'localhost';
+    FLUSH PRIVILEGES;
+    ```
+  </Step>
+</Steps>
+
+### PDO Extension Not Found
+
+**Symptom:** Error message "Class 'PDO' not found" or "could not find driver".
+
+**Solution:**
+
+Install PHP PDO and MySQL extensions:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install php7.0-mysql php7.0-pdo
+sudo systemctl restart apache2
+
+# CentOS/RHEL
+sudo yum install php-mysql php-pdo
+sudo systemctl restart httpd
+```
+
+Verify installation:
+```bash
+php -m | grep -i pdo
+```
+
+Should display:
+```
+PDO
+pdo_mysql
+```
+
+### Wrong MySQL Version
+
+**Symptom:** Database errors about unsupported features or syntax.
+
+**Solution:**
+
+Check your MySQL version:
+```bash
+mysql --version
+```
+
+The application requires MySQL 5.7.14 or higher. If you have an older version:
+
+```bash
+# Debian/Ubuntu - Upgrade MySQL
+sudo apt-get update
+sudo apt-get install mysql-server-5.7
+
+# CentOS/RHEL - Upgrade MySQL
+sudo yum update mysql-server
+```
+
+## File Permission Problems
+
+### White Screen or Blank Page
+
+**Symptom:** Accessing the application shows a blank white page with no content or errors.
+
+**Solutions:**
+
+<Steps>
+  <Step title="Enable PHP Error Display">
+    Temporarily enable error display to see what's wrong:
+    ```bash
+    # Edit php.ini
+    sudo nano /etc/php/7.0/apache2/php.ini
+    ```
+    
+    Set:
+    ```ini
+    display_errors = On
+    error_reporting = E_ALL
+    ```
+    
+    Restart Apache and reload the page to see errors.
+  </Step>
+
+  <Step title="Check PHP Error Logs">
+    ```bash
+    # Debian/Ubuntu
+    sudo tail -f /var/log/apache2/error.log
+    
+    # CentOS/RHEL
+    sudo tail -f /var/log/httpd/error_log
+    ```
+  </Step>
+
+  <Step title="Verify File Permissions">
+    Ensure files are readable by the web server:
+    ```bash
+    sudo chown -R www-data:www-data /var/www/html/drogueria
+    sudo find /var/www/html/drogueria -type f -exec chmod 644 {} \;
+    sudo find /var/www/html/drogueria -type d -exec chmod 755 {} \;
+    ```
+  </Step>
+</Steps>
+
+### Cannot Write to Upload/Cache Directories
+
+**Symptom:** File upload errors or cache-related issues.
+
+**Solution:**
+
+Make specific directories writable by the web server:
+
+```bash
+# Identify writable directories (uploads, cache, temp, etc.)
+sudo chmod 775 /var/www/html/drogueria/uploads
+sudo chmod 775 /var/www/html/drogueria/cache
+sudo chown -R www-data:www-data /var/www/html/drogueria/uploads
+sudo chown -R www-data:www-data /var/www/html/drogueria/cache
+```
+
+<Warning>
+  Never set permissions to 777 on production servers. This creates a severe security vulnerability.
+</Warning>
+
+### PHP Files Download Instead of Execute
+
+**Symptom:** Clicking links downloads `.php` files instead of executing them.
+
+**Solution:**
+
+This means Apache is not processing PHP files. Configure PHP handler:
+
+<Steps>
+  <Step title="Install PHP Module for Apache">
+    ```bash
+    # Debian/Ubuntu
+    sudo apt-get install libapache2-mod-php7.0
+    
+    # CentOS/RHEL
+    sudo yum install php
+    ```
+  </Step>
+
+  <Step title="Enable PHP Module">
+    ```bash
+    # Debian/Ubuntu
+    sudo a2enmod php7.0
+    
+    # CentOS/RHEL - usually enabled automatically
+    ```
+  </Step>
+
+  <Step title="Configure MIME Types">
+    Ensure Apache configuration includes:
+    ```apache
+    <FilesMatch \.php$>
+        SetHandler application/x-httpd-php
+    </FilesMatch>
+    ```
+  </Step>
+
+  <Step title="Restart Apache">
+    ```bash
+    sudo systemctl restart apache2  # or httpd
+    ```
+  </Step>
+</Steps>
+
+## Login and Authentication Issues
+
+### Cannot Login with Default Credentials
+
+**Symptom:** Using admin/123456 (default credentials) doesn't work.
+
+**Solutions:**
+
+1. **Check if database is imported:** The user table must be populated with default users.
+
+2. **Verify password hashing:** Ensure passwords are hashed correctly in the database. The application likely uses PHP's `password_hash()` function.
+
+3. **Check session configuration:** Verify PHP sessions are working:
+   ```bash
+   ls -la /var/lib/php/sessions  # or /tmp
+   ```
+   
+   Ensure the directory is writable:
+   ```bash
+   sudo chmod 1733 /var/lib/php/sessions
+   ```
+
+### Session Not Persisting
+
+**Symptom:** Login appears successful but immediately redirects back to login page.
+
+**Solution:**
+
+<Steps>
+  <Step title="Check Session Save Path">
+    In `php.ini`:
+    ```ini
+    session.save_path = "/var/lib/php/sessions"
+    ```
+    
+    Ensure this directory exists and is writable:
+    ```bash
+    sudo mkdir -p /var/lib/php/sessions
+    sudo chown -R www-data:www-data /var/lib/php/sessions
+    sudo chmod 1733 /var/lib/php/sessions
+    ```
+  </Step>
+
+  <Step title="Verify Cookie Settings">
+    Check browser cookies aren't being blocked. Try accessing via:
+    - Different browser
+    - Incognito/private mode
+    - Different device
+  </Step>
+
+  <Step title="Check session.cookie_secure">
+    If using HTTP (not HTTPS) and `session.cookie_secure = On`, sessions won't work:
+    ```ini
+    ; In php.ini - set to Off for HTTP, On for HTTPS
+    session.cookie_secure = Off
+    ```
+  </Step>
+</Steps>
+
+## Static Assets Not Loading
+
+### CSS/JS Files Return 404
+
+**Symptom:** Page loads but has no styling, browser console shows 404 errors for CSS/JS files.
+
+**Solution:**
+
+The `.htaccess` rewrite rules should allow static files to load. Verify:
+
+```apache
+RewriteCond %{SCRIPT_FILENAME} !-d
+RewriteCond %{SCRIPT_FILENAME} !-f
+```
+
+These conditions prevent rewriting if the file actually exists. Ensure:
+
+1. CSS/JS files exist in the correct paths
+2. File permissions allow reading (644)
+3. The path in HTML is correct (check browser DevTools Network tab)
+
+## Getting Additional Help
+
+If you encounter issues not covered here:
+
+1. **Check Error Logs:** Always start by reviewing Apache and PHP error logs
+2. **Enable Debug Mode:** Temporarily enable PHP error display to see detailed errors
+3. **Test Components Individually:** Verify PHP, MySQL, and Apache work independently
+4. **Review File Permissions:** Ensure proper ownership and permissions throughout
+
+<Note>
+  When reporting issues, always include:
+  - Operating system and version
+  - PHP, Apache, and MySQL versions
+  - Exact error messages from logs
+  - Steps to reproduce the issue
+</Note>

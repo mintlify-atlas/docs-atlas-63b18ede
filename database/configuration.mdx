@@ -1,0 +1,251 @@
+---
+title: 'Database Configuration'
+description: 'Database connection setup and configuration using db.php'
+---
+
+# Database Configuration
+
+The Droguería Somos Salud system uses PDO (PHP Data Objects) for secure database connectivity with MySQL.
+
+## Connection File
+
+The database connection is configured in `/db/db.php` and is included throughout the application.
+
+## Configuration Code
+
+```php
+<?php
+$url = $_SERVER['REQUEST_URI'];
+if (stripos($url, "db.php")) {
+    header("location:/");
+} else {
+    $_user = 'user';
+    $_pass = 'pass';
+    $e = "";
+    try {
+        $db = new PDO('mysql:host=localhost;dbname=drogueria', $_user, $_pass);
+        $db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $utf8 = $db->query("SET NAMES 'utf8'");
+    } catch (PDOException $e) {
+        print "¡Error!: " . $e->getMessage() . "<br/>";
+        die();
+    }
+}
+?>
+```
+
+## Configuration Parameters
+
+### Connection Settings
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Host | `localhost` | Database server address |
+| Database | `drogueria` | Database name |
+| Username | `user` | Database user (configurable) |
+| Password | `pass` | Database password (configurable) |
+
+### PDO Attributes
+
+The connection configures three important PDO attributes:
+
+#### ATTR_EMULATE_PREPARES
+
+```php
+$db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+```
+
+- **Value**: `false`
+- **Purpose**: Uses native prepared statements instead of emulation
+- **Security**: Provides better protection against SQL injection
+- **Performance**: Leverages MySQL's native prepared statement functionality
+
+#### ATTR_ERRMODE
+
+```php
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+```
+
+- **Value**: `PDO::ERRMODE_EXCEPTION`
+- **Purpose**: Throws exceptions for database errors
+- **Benefits**: 
+  - Enables try-catch error handling
+  - Provides detailed error messages
+  - Prevents silent failures
+
+#### Character Encoding
+
+```php
+$utf8 = $db->query("SET NAMES 'utf8'");
+```
+
+- **Encoding**: UTF-8
+- **Purpose**: Ensures proper handling of special characters
+- **Compatibility**: Matches database charset (utf8_swedish_ci)
+
+## Security Features
+
+### Direct Access Prevention
+
+```php
+$url = $_SERVER['REQUEST_URI'];
+if (stripos($url, "db.php")) {
+    header("location:/");
+}
+```
+
+The configuration file includes protection against direct browser access:
+- Checks if URL contains "db.php"
+- Redirects to home page if accessed directly
+- Prevents credential exposure
+
+### Exception Handling
+
+```php
+try {
+    // Connection code
+} catch (PDOException $e) {
+    print "¡Error!: " . $e->getMessage() . "<br/>";
+    die();
+}
+```
+
+- Catches connection errors gracefully
+- Displays error message for debugging
+- Terminates execution on failure
+
+## Setup Instructions
+
+### 1. Update Credentials
+
+Edit `/db/db.php` and update the credentials:
+
+```php
+$_user = 'your_database_user';
+$_pass = 'your_database_password';
+```
+
+### 2. Verify MySQL Server
+
+Ensure MySQL is running on localhost:
+
+```bash
+# Check MySQL status
+sudo systemctl status mysql
+
+# Start MySQL if not running
+sudo systemctl start mysql
+```
+
+### 3. Create Database User
+
+Create a MySQL user with appropriate privileges:
+
+```sql
+-- Create user
+CREATE USER 'your_database_user'@'localhost' IDENTIFIED BY 'your_database_password';
+
+-- Grant privileges
+GRANT ALL PRIVILEGES ON drogueria.* TO 'your_database_user'@'localhost';
+
+-- Apply changes
+FLUSH PRIVILEGES;
+```
+
+### 4. Test Connection
+
+Create a test script to verify connectivity:
+
+```php
+<?php
+require_once 'db/db.php';
+
+try {
+    $stmt = $db->query("SELECT COUNT(*) as count FROM user");
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    echo "Connection successful! Users in database: " . $result['count'];
+} catch (PDOException $e) {
+    echo "Connection failed: " . $e->getMessage();
+}
+?>
+```
+
+## Environment-Specific Configuration
+
+### Development Environment
+
+For development, you may want more verbose error reporting:
+
+```php
+// Enable detailed error display
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+```
+
+### Production Environment
+
+For production, use more secure error handling:
+
+```php
+// Log errors instead of displaying them
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', '/path/to/php-error.log');
+```
+
+### Using Environment Variables
+
+For better security, consider using environment variables:
+
+```php
+// Using .env file or server environment variables
+$_user = getenv('DB_USER');
+$_pass = getenv('DB_PASS');
+$_host = getenv('DB_HOST') ?: 'localhost';
+$_name = getenv('DB_NAME') ?: 'drogueria';
+
+$db = new PDO("mysql:host=$_host;dbname=$_name", $_user, $_pass);
+```
+
+## Connection Pooling
+
+The current implementation creates a single connection per request. For high-traffic scenarios, consider:
+
+- Using persistent connections: `PDO::ATTR_PERSISTENT => true`
+- Implementing connection pooling
+- Using a connection manager class
+
+## Troubleshooting
+
+### Common Issues
+
+**Error: Access denied for user**
+```
+Solution: Verify username and password in db.php match MySQL user credentials
+```
+
+**Error: Unknown database 'drogueria'**
+```
+Solution: Import database.sql to create the database structure
+```
+
+**Error: Connection refused**
+```
+Solution: Verify MySQL server is running and listening on localhost:3306
+```
+
+**Error: UTF-8 character issues**
+```
+Solution: Ensure all files are saved with UTF-8 encoding and verify MySQL charset
+```
+
+## Best Practices
+
+1. **Never commit credentials**: Use environment variables or config files excluded from version control
+2. **Use prepared statements**: The PDO connection is configured for secure queries
+3. **Close connections**: PHP automatically closes connections at script end, but explicit closure is good practice
+4. **Error logging**: In production, log errors instead of displaying them
+5. **Connection testing**: Implement health checks to verify database connectivity

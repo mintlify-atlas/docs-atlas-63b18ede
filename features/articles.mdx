@@ -1,0 +1,249 @@
+---
+title: 'Product Management'
+description: 'Create, edit, view, and manage pharmaceutical products (articles) in the inventory system'
+---
+
+## Overview
+
+Product management (also called "Articles" in the system) is the core feature for maintaining the pharmaceutical product catalog. Each product represents a specific medication or pharmaceutical item with attributes like laboratory, presentation, pricing, and stock levels.
+
+## Database Schema
+
+The `articulo` table stores all product information:
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | int(11) | PRIMARY KEY, AUTO_INCREMENT | Unique product identifier |
+| `nombre` | varchar(45) | NOT NULL | Product name |
+| `laboratorio_id` | int(11) | NOT NULL, FOREIGN KEY | Reference to laboratory |
+| `presentacion_id` | int(11) | NOT NULL, FOREIGN KEY | Reference to presentation type |
+| `stock` | int(11) | NOT NULL | Current stock quantity |
+| `stock_minimo` | int(11) | NOT NULL | Minimum stock alert threshold |
+| `valor_venta` | decimal(12,2) | NOT NULL | Sale price per unit |
+
+### Foreign Key Relationships
+
+```sql
+CONSTRAINT `fk_articulo_laboratorio1` 
+    FOREIGN KEY (`laboratorio_id`) REFERENCES `laboratorio` (`id`)
+
+CONSTRAINT `fk_articulo_presentacion1` 
+    FOREIGN KEY (`presentacion_id`) REFERENCES `presentacion` (`id`)
+```
+
+## Creating Products
+
+### Workflow
+
+<Steps>
+  <Step title="Navigate to Products">
+    Click on "Productos" in the main navigation menu, then click "Registrar Productos"
+  </Step>
+  
+  <Step title="Fill in Product Details">
+    Complete all required fields in the product creation form
+  </Step>
+  
+  <Step title="Submit and Validate">
+    The system validates that no duplicate product exists with the same name, laboratory, and presentation combination
+  </Step>
+  
+  <Step title="Confirmation">
+    Upon success, the product is added to the inventory and you're redirected to the product list
+  </Step>
+</Steps>
+
+### Required Fields
+
+<CardGroup cols={2}>
+  <Card title="Product Name" icon="tag">
+    Enter the name of the pharmaceutical product (up to 45 characters)
+  </Card>
+  
+  <Card title="Laboratory" icon="flask">
+    Select the manufacturing laboratory from the dropdown menu
+  </Card>
+  
+  <Card title="Presentation" icon="box">
+    Select the product presentation type (e.g., tablets, syrup, capsules)
+  </Card>
+  
+  <Card title="Sale Price" icon="dollar-sign">
+    Enter the unit sale price (decimal format with 2 decimal places)
+  </Card>
+  
+  <Card title="Initial Stock" icon="boxes">
+    Enter the initial stock quantity (integer value)
+  </Card>
+  
+  <Card title="Minimum Stock" icon="triangle-exclamation">
+    Set the minimum stock threshold for low inventory alerts
+  </Card>
+</CardGroup>
+
+### Validation Rules
+
+The system performs the following validation before creating a product:
+
+```sql
+SELECT count(*) as total 
+FROM articulo 
+WHERE nombre = '{articulo_nombre}' 
+  AND presentacion_id = '{presentacion_id}' 
+  AND laboratorio_id = '{laboratorio_id}';
+```
+
+<Warning>
+If a product with the same name, laboratory, and presentation already exists, you'll receive an error message: "El artículo {nombre} con esa presentación y laboratorio ya se encuentra registrado, por favor editelo."
+</Warning>
+
+### Insert Query
+
+When validation passes, the product is created with:
+
+```sql
+INSERT INTO articulo (
+    nombre,
+    laboratorio_id,
+    presentacion_id,
+    stock,
+    stock_minimo,
+    valor_venta
+) VALUES (
+    '{articulo_nombre}',
+    '{laboratorio_id}',
+    '{presentacion_id}',
+    '{stock}',
+    '{stock_minimo}',
+    '{valor_venta}'
+);
+```
+
+## Viewing Products
+
+### Product List
+
+The product index displays all products with the following information:
+
+- Sequential number (#)
+- Product name
+- Laboratory name
+- Presentation type
+- Sale price (formatted with thousand separators)
+- Current stock
+- Minimum stock threshold
+- Action buttons (Edit, View, Delete)
+
+### Stock Status Indicators
+
+Products are displayed with color-coded backgrounds based on stock levels:
+
+| Status | Color | Condition |
+|--------|-------|-----------|
+| Critical | Red (#F78181) | Stock < Minimum Stock |
+| Warning | Yellow (#F3E2A9) | Stock = Minimum Stock |
+| Normal | Default | Stock > Minimum Stock |
+
+<Note>
+Products are automatically sorted by stock urgency, with the lowest stock items appearing first in the list. This helps quickly identify products that need restocking.
+</Note>
+
+### View Individual Product
+
+Click the eye icon to view detailed information about a specific product, including:
+
+- Complete product details
+- Current stock levels
+- Purchase history
+- Sales history
+
+## Editing Products
+
+### Workflow
+
+1. Navigate to the product list
+2. Click the pencil icon next to the product you want to edit
+3. Modify the desired fields
+4. Click "Guardar" to save changes
+
+### Editable Fields
+
+All product fields can be edited:
+- Product name
+- Laboratory association
+- Presentation type
+- Sale price
+- Stock quantity
+- Minimum stock threshold
+
+<Warning>
+Changing the laboratory or presentation of a product that already has purchase/sales history may affect reporting. Consider the impact on historical data before making these changes.
+</Warning>
+
+## Deleting Products
+
+### Deletion Rules
+
+Products can only be deleted if they meet the following criteria:
+
+```sql
+SELECT COUNT(*) as total 
+FROM compra, venta_detalle 
+WHERE compra.articulo_id = {id} 
+   OR venta_detalle.articulo_id = {id};
+```
+
+<Warning>
+Products that have been purchased or sold cannot be deleted. This protects the integrity of purchase and sales history. If the count is greater than 0, deletion is blocked with the error: "Ese artículo ya ha sido comprado o vendido, no puede ser eliminado."
+</Warning>
+
+### Delete Workflow
+
+1. Click the trash icon next to the product
+2. Confirm the deletion in the alert dialog
+3. The system checks for foreign key relationships
+4. If no relationships exist, the product is deleted
+5. If relationships exist, an error message is displayed
+
+### Successful Deletion
+
+When a product has no dependencies, it's deleted with:
+
+```sql
+DELETE FROM articulo WHERE id = {id};
+```
+
+The action is logged in the audit trail with the user information.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Unique Naming" icon="fingerprint">
+    Use clear, descriptive product names that distinguish between different dosages and formulations
+  </Card>
+  
+  <Card title="Accurate Stock Levels" icon="clipboard-check">
+    Set initial stock carefully, as it affects automatic stock calculations for purchases and sales
+  </Card>
+  
+  <Card title="Minimum Stock Thresholds" icon="bell">
+    Configure minimum stock based on lead times and sales velocity to avoid stockouts
+  </Card>
+  
+  <Card title="Price Management" icon="money-bill">
+    Keep sale prices updated to reflect current market rates and ensure profitability
+  </Card>
+</CardGroup>
+
+## Product Dependencies
+
+Products are related to multiple system entities:
+
+- **Laboratory** (Required): Must be created before adding products
+- **Presentation** (Required): Must be created before adding products
+- **Purchases**: Each purchase increases product stock
+- **Sales**: Each sale decreases product stock
+
+<Note>
+Before creating products, ensure you have set up at least one laboratory and one presentation type in the system.
+</Note>

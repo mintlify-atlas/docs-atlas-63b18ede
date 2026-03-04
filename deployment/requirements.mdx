@@ -1,0 +1,148 @@
+---
+title: 'Server Requirements'
+description: 'System requirements for deploying Droguería Somos Salud'
+---
+
+## Overview
+
+Droguería Somos Salud is a PHP-based pharmacy inventory management system that requires specific server components to function properly.
+
+## Minimum Requirements
+
+The following versions are recommended for optimal performance:
+
+<CardGroup cols={3}>
+  <Card title="PHP" icon="php">
+    Version 7.0 or higher
+  </Card>
+  <Card title="Apache" icon="server">
+    Version 2.4 or higher
+  </Card>
+  <Card title="MySQL" icon="database">
+    Version 5.7.14 or higher
+  </Card>
+</CardGroup>
+
+## Required PHP Extensions
+
+Ensure the following PHP extensions are installed and enabled:
+
+- **PDO** - PHP Data Objects for database abstraction
+- **PDO_MySQL** - MySQL driver for PDO
+- **mbstring** - Multi-byte string handling
+- **json** - JSON encoding/decoding
+
+You can verify installed extensions by running:
+
+```bash
+php -m
+```
+
+## Apache Modules
+
+<Warning>
+  The **mod_rewrite** module is required for friendly URLs. The application will not function correctly without it.
+</Warning>
+
+The system requires the following Apache modules to be enabled:
+
+- **mod_rewrite** - URL rewriting for friendly URLs
+- **mod_dir** - Directory indexing
+- **mod_mime** - MIME type configuration
+
+### Enabling mod_rewrite
+
+On Debian/Ubuntu systems:
+
+```bash
+sudo a2enmod rewrite
+sudo systemctl restart apache2
+```
+
+On CentOS/RHEL systems, mod_rewrite is typically enabled by default. Verify by checking:
+
+```bash
+httpd -M | grep rewrite
+```
+
+## MySQL Configuration
+
+The system requires MySQL 5.7.14 or higher with the following:
+
+- InnoDB storage engine support
+- UTF-8 character set support (utf8mb4 recommended)
+- Sufficient user privileges for creating/modifying tables
+
+## File System Permissions
+
+Ensure the web server has appropriate permissions:
+
+```bash
+# Set ownership to web server user
+sudo chown -R www-data:www-data /var/www/html/drogueria
+
+# Set directory permissions
+sudo find /var/www/html/drogueria -type d -exec chmod 755 {} \;
+
+# Set file permissions
+sudo find /var/www/html/drogueria -type f -exec chmod 644 {} \;
+```
+
+<Note>
+  Replace `www-data` with your web server user (e.g., `apache` on CentOS/RHEL systems).
+</Note>
+
+## Verifying Requirements
+
+Before installation, verify your system meets all requirements:
+
+<Steps>
+  <Step title="Check PHP Version">
+    ```bash
+    php -v
+    ```
+    Should display PHP 7.0 or higher.
+  </Step>
+
+  <Step title="Check Apache Version">
+    ```bash
+    apache2 -v  # Debian/Ubuntu
+    # or
+    httpd -v    # CentOS/RHEL
+    ```
+    Should display Apache 2.4 or higher.
+  </Step>
+
+  <Step title="Check MySQL Version">
+    ```bash
+    mysql --version
+    ```
+    Should display MySQL 5.7.14 or higher.
+  </Step>
+
+  <Step title="Verify mod_rewrite">
+    ```bash
+    apache2ctl -M | grep rewrite  # Debian/Ubuntu
+    # or
+    httpd -M | grep rewrite       # CentOS/RHEL
+    ```
+    Should display `rewrite_module`.
+  </Step>
+</Steps>
+
+## System Architecture
+
+The system is designed with the following architecture:
+
+- **Frontend**: AdminLTE framework for UI
+- **Backend**: PHP 7 with PDO for database operations
+- **Database**: MySQL for data storage
+- **Data Tables**: DataTables library for dynamic table management
+- **Routing**: Apache mod_rewrite for URL routing
+
+## Next Steps
+
+Once you've verified all requirements are met, proceed to:
+
+- [Apache Configuration](/deployment/apache-configuration) - Configure Apache and virtual hosts
+- [Troubleshooting](/deployment/troubleshooting) - Common deployment issues

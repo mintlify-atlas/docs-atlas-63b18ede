@@ -1,0 +1,237 @@
+---
+title: Installation
+description: Complete installation guide for Droguería Somos Salud including system requirements, database setup, and Apache configuration
+---
+
+## System Requirements
+
+Before installing Droguería Somos Salud, ensure your server meets these requirements:
+
+<Info>
+The system has been tested and optimized for the following versions:
+- **PHP 7.0** or higher
+- **Apache 2.4** or higher
+- **MySQL 5.7.14** or higher
+</Info>
+
+### Required PHP Extensions
+
+The system uses PDO for database connections, which requires:
+- `pdo_mysql` extension
+- `mbstring` extension for UTF-8 support
+- `session` support (enabled by default)
+
+### Required Apache Modules
+
+<Warning>
+The `mod_rewrite` module is **required** for friendly URLs to work properly. The application will not function correctly without it.
+</Warning>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Download and Extract">
+    Clone or download the source code to your web server's document root:
+    
+    ```bash
+    cd /var/www/html
+    git clone <repository-url> drogueria
+    cd drogueria
+    ```
+  </Step>
+
+  <Step title="Enable Apache mod_rewrite">
+    Enable the mod_rewrite module in Apache:
+    
+    ```bash
+    sudo a2enmod rewrite
+    ```
+    
+    Edit your Apache virtual host configuration to allow `.htaccess` overrides:
+    
+    ```apache
+    <Directory /var/www/html/drogueria>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    ```
+    
+    Restart Apache to apply changes:
+    
+    ```bash
+    sudo systemctl restart apache2
+    ```
+    
+    <Note>
+    The `.htaccess` file in the project root handles URL rewriting for clean URLs like `/login`, `/articles`, `/sales`, etc.
+    </Note>
+  </Step>
+
+  <Step title="Create MySQL Database">
+    Log into MySQL and create the database:
+    
+    ```sql
+    CREATE DATABASE IF NOT EXISTS drogueria 
+    CHARACTER SET utf8 
+    COLLATE utf8_swedish_ci;
+    ```
+  </Step>
+
+  <Step title="Import Database Schema">
+    Import the database structure and initial data:
+    
+    ```bash
+    mysql -u root -p drogueria < db/database.sql
+    ```
+    
+    This will create the following tables:
+    - `user` - User accounts and authentication
+    - `rol` - User roles (Super Admin, Admin, User)
+    - `articulo` - Product/article inventory
+    - `laboratorio` - Laboratories/manufacturers
+    - `presentacion` - Product presentations
+    - `proveedor` - Suppliers
+    - `factura` - Purchase invoices
+    - `compra` - Purchase details
+    - `venta` - Sales transactions
+    - `venta_detalle` - Sales details
+    - `auditoria` - Audit trail
+    - `estado` - Invoice status
+    
+    <Info>
+    The database import includes a default admin user:
+    - **Username:** `admin`
+    - **Password:** `123456`
+    - **Role:** Super Admin
+    </Info>
+  </Step>
+
+  <Step title="Configure Database Connection">
+    Update the database credentials in `db/db.php`:
+    
+    ```php db/db.php
+    <?php
+    $_user = 'your_mysql_username';
+    $_pass = 'your_mysql_password';
+    
+    try {
+        $db = new PDO('mysql:host=localhost;dbname=drogueria', $_user, $_pass);
+        $db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $utf8 = $db->query("SET NAMES 'utf8'");
+    } catch (PDOException $e) {
+        print "¡Error!: " . $e->getMessage() . "<br/>";
+        die();
+    }
+    ?>
+    ```
+    
+    <Warning>
+    Replace `your_mysql_username` and `your_mysql_password` with your actual MySQL credentials.
+    </Warning>
+  </Step>
+
+  <Step title="Set File Permissions">
+    Ensure Apache has the correct permissions:
+    
+    ```bash
+    sudo chown -R www-data:www-data /var/www/html/drogueria
+    sudo chmod -R 755 /var/www/html/drogueria
+    ```
+  </Step>
+
+  <Step title="Verify Installation">
+    Open your browser and navigate to your installation URL:
+    
+    ```
+    http://localhost/drogueria/login
+    ```
+    
+    You should see the login page. Use the default credentials to log in:
+    - Username: `admin`
+    - Password: `123456`
+  </Step>
+</Steps>
+
+## Post-Installation
+
+### Change Default Password
+
+<Warning>
+**Security Alert:** Change the default admin password immediately after your first login!
+</Warning>
+
+1. Log in with the default credentials
+2. Navigate to **Users** section
+3. Edit the admin user
+4. Update the password
+
+### Configure PHP Sessions
+
+The system uses PHP sessions with a 5-minute timeout. Session configuration is in `index.php:4-8`:
+
+```php
+session_start();
+if (!isset($_SESSION['rol']) || $_SESSION['rol'] == "" || $_SESSION['rol'] == "Sin registrar") {
+    $_SESSION['rol'] = "Sin registrar";
+    header('location:/login');
+}
+```
+
+## Troubleshooting
+
+### URLs Not Working (404 Errors)
+
+If you get 404 errors when navigating:
+
+1. Verify `mod_rewrite` is enabled:
+   ```bash
+   apache2ctl -M | grep rewrite
+   ```
+
+2. Check that `.htaccess` exists in the project root
+3. Verify `AllowOverride All` is set in your Apache configuration
+
+### Database Connection Errors
+
+If you see database connection errors:
+
+1. Verify MySQL is running:
+   ```bash
+   sudo systemctl status mysql
+   ```
+
+2. Check credentials in `db/db.php`
+3. Ensure the `drogueria` database exists
+4. Verify the MySQL user has proper permissions:
+   ```sql
+   GRANT ALL PRIVILEGES ON drogueria.* TO 'username'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+
+### Blank Page or PHP Errors
+
+Enable error reporting temporarily to diagnose issues:
+
+```php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+```
+
+Add these lines at the top of `index.php` (remove after debugging).
+
+## System Architecture
+
+The application follows this structure:
+
+- `index.php` - Main entry point and router
+- `db/` - Database connection and schema
+- `views/` - All view templates organized by module
+- `functions/` - Helper functions
+- `assets/` - Frontend resources (AdminLTE, Bootstrap, DataTables)
+
+The system uses role-based access control with three roles defined in `db/database.sql:159-162`:
+- **Role 1:** Super Admin (full access)
+- **Role 2:** Admin (full access)
+- **Role 3:** User (limited access, no user/audit management)

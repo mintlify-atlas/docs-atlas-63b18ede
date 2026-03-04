@@ -1,0 +1,267 @@
+---
+title: 'Database Tables'
+description: 'Complete reference of all database tables, fields, data types, and their purposes'
+---
+
+# Database Tables
+
+Complete documentation of all tables in the Droguería Somos Salud database.
+
+## articulo
+
+Stores the product/medicine catalog with inventory and pricing information.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| nombre | varchar(45) | NO | - | Product/medicine name |
+| laboratorio_id | int(11) | NO | - | Foreign key to laboratorio table |
+| presentacion_id | int(11) | NO | - | Foreign key to presentacion table |
+| stock | int(11) | NO | - | Current stock quantity |
+| stock_minimo | int(11) | NO | - | Minimum stock threshold for reorder alerts |
+| valor_venta | decimal(12,2) | NO | - | Sale price per unit |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+- INDEX: `laboratorio_id`
+- INDEX: `presentacion_id`
+
+**Foreign Keys:**
+- `fk_articulo_laboratorio1`: `laboratorio_id` → `laboratorio(id)`
+- `fk_articulo_presentacion1`: `presentacion_id` → `presentacion(id)`
+
+---
+
+## auditoria
+
+System audit log tracking all user actions for security and compliance.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| created_at | timestamp | NO | CURRENT_TIMESTAMP ON UPDATE | Action timestamp |
+| userbrowser | tinytext | NO | - | User's browser information |
+| ipaddress | tinytext | NO | - | User's IP address |
+| url | tinytext | NO | - | URL accessed |
+| description | tinytext | NO | - | Description of the action performed |
+| user_id | int(11) | NO | - | Foreign key to user table |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+- INDEX: `user_id`
+
+**Foreign Keys:**
+- `auditoria_ibfk_1`: `user_id` → `user(id)` ON DELETE CASCADE ON UPDATE CASCADE
+
+---
+
+## compra
+
+Individual purchase items with expiration tracking and unit costs.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| cantidad | int(11) | NO | - | Quantity purchased |
+| fecha_vencimiento | date | NO | - | Product expiration date |
+| valor_unitario | decimal(12,2) | NO | - | Unit cost (purchase price) |
+| articulo_id | int(11) | NO | - | Foreign key to articulo table |
+| factura_id | int(11) | NO | - | Foreign key to factura table |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+- INDEX: `articulo_id`
+- INDEX: `factura_id`
+
+**Foreign Keys:**
+- `fk_compra_articulo1`: `articulo_id` → `articulo(id)` ON DELETE NO ACTION ON UPDATE NO ACTION
+- `fk_compra_factura1`: `factura_id` → `factura(id)` ON DELETE NO ACTION ON UPDATE CASCADE
+
+---
+
+## estado
+
+Payment status catalog for invoices.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| nombre | varchar(20) | NO | - | Status name |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+- INDEX: `id`
+
+**Default Values:**
+```sql
+INSERT INTO estado (id, nombre) VALUES
+    (1, 'Por pagar'),
+    (2, 'Pagada');
+```
+
+---
+
+## factura
+
+Supplier invoices with payment tracking and tax information.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| numero | int(11) | NO | - | Invoice number |
+| fecha_factura | date | NO | - | Invoice date |
+| fecha_vencimiento_factura | date | NO | - | Invoice due date |
+| valor_iva | decimal(12,2) | NO | - | IVA (tax) amount |
+| valor_factura | decimal(12,2) | NO | - | Total invoice amount |
+| proveedor_id | int(11) | NO | - | Foreign key to proveedor table |
+| estado_id | int(11) | NO | - | Foreign key to estado table |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+- INDEX: `proveedor_id`
+- INDEX: `estado_id`
+
+**Foreign Keys:**
+- `factura_ibfk_1`: `estado_id` → `estado(id)`
+- `fk_factura_proveedor`: `proveedor_id` → `proveedor(id)` ON DELETE NO ACTION ON UPDATE NO ACTION
+
+---
+
+## laboratorio
+
+Pharmaceutical laboratories/manufacturers catalog.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| nombre | varchar(45) | YES | NULL | Laboratory/manufacturer name |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+
+---
+
+## presentacion
+
+Product presentation types catalog (tablets, syrups, capsules, etc.).
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| nombre | varchar(45) | YES | NULL | Presentation type name |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+
+---
+
+## proveedor
+
+Supplier information and contact details.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| nombre | varchar(45) | NO | - | Supplier name |
+| nit | varchar(20) | NO | - | Tax identification number (NIT) |
+| direccion | varchar(45) | NO | - | Supplier address |
+| telefono | varchar(20) | NO | - | Phone number |
+| email | varchar(45) | NO | - | Email address |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+- UNIQUE KEY: `nombre`
+
+**Constraints:**
+- Supplier name must be unique
+
+---
+
+## rol
+
+User role definitions for access control.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| nombre | varchar(11) | NO | - | Role name |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+
+**Default Values:**
+```sql
+INSERT INTO rol (id, nombre) VALUES
+    (1, 'Super Admin'),
+    (2, 'Admin'),
+    (3, 'User');
+```
+
+---
+
+## user
+
+System users with authentication and profile information.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| username | varchar(45) | YES | NULL | Login username |
+| password | varchar(60) | YES | NULL | Hashed password (bcrypt) |
+| nombres | varchar(45) | YES | NULL | First name(s) |
+| apellidos | varchar(45) | YES | NULL | Last name(s) |
+| email | varchar(45) | YES | NULL | Email address |
+| rol_id | int(11) | YES | NULL | Foreign key to rol table |
+| cookie | mediumtext | NO | - | Session cookie data |
+| created_at | timestamp | NO | CURRENT_TIMESTAMP ON UPDATE | Account creation/update timestamp |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+- INDEX: `rol_id`
+
+**Foreign Keys:**
+- `user_ibfk_1`: `rol_id` → `rol(id)`
+
+**Default Admin User:**
+```sql
+INSERT INTO user (id, username, password, nombres, apellidos, email, rol_id) VALUES
+    (1, 'admin', '$2y$10$5/W6Yi0m8eMh3lkLP1cdreWyR6L3iyqoWP6OwSoHY2d53SIN6cXAi', 
+     'Admin', 'Administrador', 'admin@gmail.com', 1);
+```
+*Note: Default password is hashed using bcrypt ($2y$10$)*
+
+---
+
+## venta
+
+Sales transaction records with timestamps.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| fecha_venta | timestamp | NO | CURRENT_TIMESTAMP | Sale date and time |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+
+---
+
+## venta_detalle
+
+Individual line items for each sale transaction.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| id | int(11) | NO | AUTO_INCREMENT | Primary key |
+| cantidad | int(11) | NO | - | Quantity sold |
+| articulo_id | int(11) | NO | - | Foreign key to articulo table |
+| venta_id | int(11) | NO | - | Foreign key to venta table |
+
+**Indexes:**
+- PRIMARY KEY: `id`
+- INDEX: `articulo_id`
+- INDEX: `venta_id`
+
+**Foreign Keys:**
+- `fk_venta_articulo1`: `articulo_id` → `articulo(id)` ON DELETE NO ACTION ON UPDATE NO ACTION
+- `fk_venta_detalle_venta1`: `venta_id` → `venta(id)`

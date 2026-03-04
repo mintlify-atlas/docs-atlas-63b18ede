@@ -1,0 +1,141 @@
+---
+title: 'Inventory Management'
+description: 'Track stock levels, manage minimum stock alerts, and monitor product inventory in real-time'
+---
+
+## Overview
+
+The inventory management system provides comprehensive stock tracking capabilities for all pharmaceutical products in the system. It automatically updates stock levels based on purchases and sales, and provides visual alerts when stock levels fall below minimum thresholds.
+
+<Note>
+Stock levels are automatically updated when purchases are received and sales are processed. Manual stock adjustments are not supported to maintain accurate inventory tracking.
+</Note>
+
+## Stock Tracking
+
+### Database Structure
+
+The inventory data is stored in the `articulo` table with the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | int(11) | Unique article identifier (auto-increment) |
+| `nombre` | varchar(45) | Product name |
+| `laboratorio_id` | int(11) | Foreign key to laboratory table |
+| `presentacion_id` | int(11) | Foreign key to presentation table |
+| `stock` | int(11) | Current stock quantity |
+| `stock_minimo` | int(11) | Minimum stock threshold for alerts |
+| `valor_venta` | decimal(12,2) | Sale price per unit |
+
+### Stock Updates
+
+Stock quantities are automatically adjusted by the system:
+
+- **Purchase Receipt**: When a purchase is registered, the system executes:
+  ```sql
+  UPDATE articulo SET stock = stock + {cantidad} WHERE id = {articulo_id}
+  ```
+
+- **Sale Processing**: When a sale is completed, the system executes:
+  ```sql
+  UPDATE articulo SET stock = stock - {cantidad} WHERE id = {articulo_id}
+  ```
+
+<Warning>
+The system prevents sales that would result in negative stock. If a user attempts to sell more units than are available, an error message is displayed.
+</Warning>
+
+## Minimum Stock Alerts
+
+### Visual Indicators
+
+The product listing page uses color-coded rows to indicate stock status:
+
+- **Red Background** (`#F78181`): Stock is below minimum threshold (critical)
+- **Yellow Background** (`#F3E2A9`): Stock equals minimum threshold (warning)
+- **Default Background**: Stock is above minimum threshold (normal)
+
+### Alert Logic
+
+```php
+if ($stock < $stock_minimo) {
+    // Display row with red background - critical alert
+} else if ($stock == $stock_minimo) {
+    // Display row with yellow background - warning alert
+}
+```
+
+### Setting Minimum Stock Levels
+
+When creating or editing a product, you can set the minimum stock threshold:
+
+1. Navigate to the product creation or edit form
+2. Enter the desired minimum stock quantity in the "Stock mínimo" field
+3. The system will use this value to trigger visual alerts
+
+<Card title="Best Practice" icon="lightbulb">
+Set minimum stock levels based on your average daily sales multiplied by your supplier's lead time, plus a safety buffer. For example, if you sell 10 units per day and your supplier takes 5 days to deliver, set minimum stock to at least 50-75 units.
+</Card>
+
+## Viewing Inventory Status
+
+### Product List View
+
+The main product listing displays all inventory information:
+
+- Product name
+- Laboratory
+- Presentation type
+- Sale price
+- Current stock quantity
+- Minimum stock threshold
+- Color-coded status indicators
+
+Products are automatically sorted by urgency (stock - stock_minimo) in ascending order, placing the most critical items at the top of the list.
+
+### Database Query
+
+The system retrieves inventory data using:
+
+```sql
+SELECT 
+    presentacion.nombre as presentacion, 
+    laboratorio.nombre as laboratorio, 
+    articulo.id, 
+    articulo.nombre, 
+    articulo.stock, 
+    articulo.stock_minimo, 
+    articulo.valor_venta 
+FROM articulo, laboratorio, presentacion 
+WHERE laboratorio_id = laboratorio.id 
+  AND presentacion_id = presentacion.id 
+ORDER BY stock - stock_minimo ASC;
+```
+
+## Inventory Relationships
+
+The inventory system maintains referential integrity with:
+
+- **Laboratories** (`laboratorio_id`): Each product must belong to a laboratory
+- **Presentations** (`presentacion_id`): Each product must have a presentation type
+- **Purchases** (`compra.articulo_id`): Purchase records reference inventory items
+- **Sales** (`venta_detalle.articulo_id`): Sales transactions reference inventory items
+
+<Note>
+Products cannot be deleted if they have been purchased or sold. This constraint ensures historical data integrity and accurate audit trails.
+</Note>
+
+## Stock Availability for Sales
+
+When processing sales, the system only displays products with available stock:
+
+```sql
+SELECT 
+    articulo.id, 
+    articulo.nombre, 
+    articulo.stock 
+FROM articulo 
+WHERE articulo.stock > 0
+```
+
+This prevents users from attempting to sell out-of-stock items.

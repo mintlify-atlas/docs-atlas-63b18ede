@@ -1,0 +1,408 @@
+---
+title: 'Database Migration'
+description: 'How to import database.sql and set up the initial database structure'
+---
+
+# Database Migration
+
+This guide explains how to import and set up the Droguería Somos Salud database from the provided SQL file.
+
+## Prerequisites
+
+Before importing the database, ensure you have:
+
+- MySQL 5.5.57 or higher installed
+- MySQL root access or appropriate user privileges
+- The `database.sql` file located in `/db/database.sql`
+
+## Quick Start
+
+### Using Command Line
+
+The fastest way to import the database:
+
+```bash
+# Import the database
+mysql -u root -p < /path/to/source/db/database.sql
+
+# Verify import
+mysql -u root -p -e "USE drogueria; SHOW TABLES;"
+```
+
+### Using MySQL Client
+
+```bash
+# Connect to MySQL
+mysql -u root -p
+
+# Run these commands:
+mysql> source /path/to/source/db/database.sql;
+mysql> USE drogueria;
+mysql> SHOW TABLES;
+mysql> quit;
+```
+
+## Step-by-Step Installation
+
+### Step 1: Prepare MySQL
+
+Connect to MySQL server:
+
+```bash
+mysql -u root -p
+```
+
+### Step 2: Create Database (Optional)
+
+The SQL file automatically creates the database, but you can do it manually:
+
+```sql
+CREATE DATABASE IF NOT EXISTS drogueria 
+    DEFAULT CHARACTER SET utf8 
+    COLLATE utf8_swedish_ci;
+```
+
+### Step 3: Import Database Structure
+
+Exit MySQL client and run:
+
+```bash
+mysql -u root -p drogueria < /path/to/source/db/database.sql
+```
+
+Or from within MySQL client:
+
+```sql
+USE drogueria;
+source /path/to/source/db/database.sql;
+```
+
+### Step 4: Verify Installation
+
+Check that all tables were created:
+
+```sql
+USE drogueria;
+
+SHOW TABLES;
+```
+
+Expected output:
+```
++----------------------+
+| Tables_in_drogueria  |
++----------------------+
+| articulo             |
+| auditoria            |
+| compra               |
+| estado               |
+| factura              |
+| laboratorio          |
+| presentacion         |
+| proveedor            |
+| rol                  |
+| user                 |
+| venta                |
+| venta_detalle        |
++----------------------+
+```
+
+### Step 5: Verify Default Data
+
+Check that default data was inserted:
+
+```sql
+-- Check roles
+SELECT * FROM rol;
+
+-- Check states
+SELECT * FROM estado;
+
+-- Check default admin user
+SELECT id, username, nombres, apellidos, email, rol_id FROM user;
+```
+
+Expected default data:
+
+**Roles (rol)**:
+- 1: Super Admin
+- 2: Admin
+- 3: User
+
+**States (estado)**:
+- 1: Por pagar
+- 2: Pagada
+
+**Default Admin User**:
+- Username: `admin`
+- Password: (hashed - use default password)
+- Email: admin@gmail.com
+- Role: Super Admin (1)
+
+## Database Structure Overview
+
+The import creates the following structure:
+
+```sql
+-- 12 tables with relationships
+-- 3 default roles
+-- 2 invoice states
+-- 1 default admin user
+-- Full foreign key constraints
+-- Indexes for performance
+```
+
+## Default Admin Credentials
+
+After import, you can log in with:
+
+- **Username**: `admin`
+- **Password**: The password is hashed in the SQL file using bcrypt
+
+Hash in database:
+```
+$2y$10$5/W6Yi0m8eMh3lkLP1cdreWyR6L3iyqoWP6OwSoHY2d53SIN6cXAi
+```
+
+**Important**: Change the default admin password immediately after first login for security.
+
+## Advanced Import Options
+
+### Import with Verbose Output
+
+```bash
+mysql -u root -p -v drogueria < /path/to/source/db/database.sql
+```
+
+### Import and Log Output
+
+```bash
+mysql -u root -p drogueria < /path/to/source/db/database.sql > import.log 2>&1
+```
+
+### Import Specific Tables Only
+
+If you need to import specific tables:
+
+```bash
+# Extract specific table from SQL file
+sed -n '/CREATE TABLE.*articulo/,/ENGINE=InnoDB/p' database.sql > articulo.sql
+
+# Import specific table
+mysql -u root -p drogueria < articulo.sql
+```
+
+## Using PHPMyAdmin
+
+If you prefer a GUI interface:
+
+1. Log in to PHPMyAdmin
+2. Click "New" to create database (or select existing)
+3. Name it `drogueria`
+4. Set collation to `utf8_swedish_ci`
+5. Click "Import" tab
+6. Choose file: `database.sql`
+7. Click "Go"
+8. Verify tables appear in left sidebar
+
+## Database Character Set
+
+The database uses UTF-8 encoding:
+
+```sql
+CREATE DATABASE IF NOT EXISTS `drogueria` 
+    /*!40100 DEFAULT CHARACTER SET utf8 COLLATE utf8_swedish_ci */;
+```
+
+This ensures proper handling of Spanish characters and special symbols.
+
+## Foreign Key Constraints
+
+The import automatically creates foreign key relationships. The SQL file temporarily disables foreign key checks during import:
+
+```sql
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+-- ... table creation ...
+/*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
+```
+
+This allows tables to be created in any order without constraint violations.
+
+## Backup Before Migration
+
+If you're re-importing or updating an existing database:
+
+### Create Backup
+
+```bash
+# Full database backup
+mysqldump -u root -p drogueria > backup_drogueria_$(date +%Y%m%d).sql
+
+# Backup with compression
+mysqldump -u root -p drogueria | gzip > backup_drogueria_$(date +%Y%m%d).sql.gz
+```
+
+### Restore from Backup
+
+```bash
+# Restore uncompressed backup
+mysql -u root -p drogueria < backup_drogueria_20260304.sql
+
+# Restore compressed backup
+gunzip < backup_drogueria_20260304.sql.gz | mysql -u root -p drogueria
+```
+
+## Post-Installation Tasks
+
+### 1. Create Application User
+
+For security, create a dedicated MySQL user for the application:
+
+```sql
+-- Create user
+CREATE USER 'drogueria_user'@'localhost' IDENTIFIED BY 'secure_password';
+
+-- Grant necessary privileges
+GRANT SELECT, INSERT, UPDATE, DELETE ON drogueria.* TO 'drogueria_user'@'localhost';
+
+-- Apply changes
+FLUSH PRIVILEGES;
+```
+
+### 2. Update db.php Configuration
+
+Update `/db/db.php` with the new credentials:
+
+```php
+$_user = 'drogueria_user';
+$_pass = 'secure_password';
+```
+
+### 3. Verify Foreign Keys
+
+Check that all foreign key constraints were created:
+
+```sql
+SELECT 
+    TABLE_NAME,
+    COLUMN_NAME,
+    CONSTRAINT_NAME,
+    REFERENCED_TABLE_NAME,
+    REFERENCED_COLUMN_NAME
+FROM
+    INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+WHERE
+    REFERENCED_TABLE_SCHEMA = 'drogueria'
+    AND REFERENCED_TABLE_NAME IS NOT NULL;
+```
+
+### 4. Verify Indexes
+
+Check that all indexes are in place:
+
+```sql
+SELECT 
+    TABLE_NAME,
+    INDEX_NAME,
+    COLUMN_NAME
+FROM
+    INFORMATION_SCHEMA.STATISTICS
+WHERE
+    TABLE_SCHEMA = 'drogueria'
+ORDER BY
+    TABLE_NAME, INDEX_NAME;
+```
+
+## Troubleshooting
+
+### Error: Database exists
+
+```
+ERROR 1007 (HY000): Can't create database 'drogueria'; database exists
+```
+
+**Solution**: Drop and recreate, or skip database creation:
+```sql
+DROP DATABASE IF EXISTS drogueria;
+-- Then re-import
+```
+
+### Error: Access denied
+
+```
+ERROR 1045 (28000): Access denied for user 'root'@'localhost'
+```
+
+**Solution**: Verify MySQL credentials:
+```bash
+mysql -u root -p
+# Enter correct password
+```
+
+### Error: Foreign key constraint fails
+
+```
+ERROR 1215 (HY000): Cannot add foreign key constraint
+```
+
+**Solution**: This shouldn't occur with the provided SQL file, but if it does:
+- Ensure InnoDB engine is available
+- Check that referenced tables exist
+- Verify column types match between tables
+
+### Error: Character encoding issues
+
+```
+ERROR: Unknown charset 'utf8'
+```
+
+**Solution**: Update MySQL configuration to support UTF-8:
+```ini
+[mysqld]
+character-set-server=utf8
+collation-server=utf8_swedish_ci
+```
+
+## Migration Checklist
+
+- [ ] MySQL server is running
+- [ ] Backup existing database (if applicable)
+- [ ] Import database.sql successfully
+- [ ] Verify all 12 tables exist
+- [ ] Verify default data (3 roles, 2 states, 1 admin user)
+- [ ] Verify foreign key constraints
+- [ ] Create application database user
+- [ ] Update db.php with credentials
+- [ ] Test database connection
+- [ ] Change default admin password
+
+## Database Versioning
+
+For future updates, consider implementing a migration system:
+
+1. Version the SQL file: `database_v1.0.sql`
+2. Create migration scripts for updates: `migration_v1.0_to_v1.1.sql`
+3. Document schema changes in changelog
+4. Test migrations on development environment first
+
+## Performance Optimization
+
+After initial setup, consider these optimizations:
+
+```sql
+-- Analyze tables for query optimization
+ANALYZE TABLE articulo, compra, venta, venta_detalle;
+
+-- Optimize tables
+OPTIMIZE TABLE articulo, compra, venta, venta_detalle;
+```
+
+## Next Steps
+
+After successful migration:
+
+1. Configure database connection in `db.php`
+2. Test application connectivity
+3. Review security settings
+4. Set up regular backup schedule
+5. Configure monitoring and logging

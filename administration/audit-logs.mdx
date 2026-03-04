@@ -1,0 +1,238 @@
+---
+title: Audit Logs
+description: Track user actions, monitor system activity, and maintain a complete audit trail with IP addresses and browser information
+---
+
+## Overview
+
+The Audit Logs module provides a comprehensive trail of all user activities within the Droguería Somos Salud system. Every significant action is automatically recorded, including user authentication, data modifications, and administrative operations.
+
+## Audit Database Schema
+
+The audit system uses the `auditoria` table with the following structure:
+
+### Auditoria Table
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | int(11) | Primary key, auto-increment |
+| `created_at` | timestamp | Timestamp when action occurred |
+| `userbrowser` | tinytext | Browser and user agent information |
+| `ipaddress` | tinytext | IP address of the user |
+| `url` | tinytext | URL/endpoint accessed |
+| `description` | tinytext | Description of the action performed |
+| `user_id` | int(11) | Foreign key to user table |
+
+<Note>
+  The `auditoria` table has a foreign key constraint on `user_id` that references the `user` table with CASCADE on DELETE and UPDATE operations.
+</Note>
+
+## What Gets Logged
+
+The system automatically records audit entries for the following actions:
+
+<AccordionGroup>
+  <Accordion title="User Management Actions">
+    - User account creation
+    - User account modification
+    - User account deletion
+    
+    Example: "El usuario admin creó un usuario"
+  </Accordion>
+
+  <Accordion title="Inventory Actions">
+    - Article creation and updates
+    - Stock modifications
+    - Price changes
+  </Accordion>
+
+  <Accordion title="Bill/Invoice Actions">
+    - Invoice creation
+    - Invoice modification
+    - Invoice deletion
+    
+    Example: "El usuario admin eliminó una factura"
+  </Accordion>
+
+  <Accordion title="Authentication Events">
+    - User login attempts
+    - User logout events
+    - Session activities
+  </Accordion>
+</AccordionGroup>
+
+## Viewing Audit Logs
+
+The audit log interface displays entries in reverse chronological order (newest first):
+
+### Audit List View
+
+The main audit log table shows:
+
+| Column | Description |
+|--------|-------------|
+| **#** | Sequential number |
+| **Fecha Acceso** | Date and time of the action |
+| **Dirección IP** | IP address from where the action was performed |
+| **Usuario** | Username who performed the action |
+| **Descripción** | Brief description of the action |
+| **Actions** | View button for detailed information |
+
+### Query Used
+
+The system retrieves audit logs using:
+
+```sql
+SELECT 
+  auditoria.id, 
+  auditoria.created_at, 
+  userbrowser, 
+  ipaddress, 
+  url, 
+  description, 
+  user.username 
+FROM auditoria, user 
+WHERE user.id = auditoria.user_id 
+ORDER BY auditoria.created_at DESC
+```
+
+## Viewing Detailed Audit Entry
+
+To view complete details of an audit entry:
+
+1. Navigate to the Audit Logs section
+2. Click the view icon (eye) next to any audit entry
+3. The detail view displays:
+
+<CardGroup cols={2}>
+  <Card title="Fecha Acceso" icon="clock">
+    Precise timestamp of the action
+  </Card>
+  
+  <Card title="Dirección IP" icon="network-wired">
+    IP address of the user
+  </Card>
+  
+  <Card title="Usuario" icon="user">
+    Username who performed the action
+  </Card>
+  
+  <Card title="URL" icon="link">
+    Exact URL endpoint accessed
+  </Card>
+  
+  <Card title="Navegador del Usuario" icon="browser">
+    Complete browser and user agent string
+  </Card>
+  
+  <Card title="Descripción" icon="file-text">
+    Detailed description of the action
+  </Card>
+</CardGroup>
+
+## Audit Information Captured
+
+### IP Address Tracking
+
+The system captures the IP address using PHP's `$_SERVER['REMOTE_ADDR']` variable, which provides:
+
+- Client IP address for direct connections
+- Proxy IP if behind a proxy server
+- IPv4 or IPv6 address format
+
+### Browser Information
+
+The `userbrowser` field stores the complete User Agent string, which includes:
+
+- Browser name and version
+- Operating system
+- Device type (desktop/mobile)
+- Rendering engine details
+
+Example: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36...`
+
+### URL Tracking
+
+The system logs the exact URL accessed using `$_SERVER['REQUEST_URI']`, capturing:
+
+- Route/endpoint
+- Query parameters
+- Action being performed
+
+## Implementation
+
+The audit logging is implemented through the `auditoria()` function, which is called throughout the application:
+
+```php
+auditoria(
+  $_SERVER['REMOTE_ADDR'],     // IP address
+  $_SERVER['REQUEST_URI'],     // URL
+  'Description of action',      // Action description
+  $_SESSION['userid']           // User ID
+);
+```
+
+## Security and Compliance
+
+### Data Retention
+
+<Info>
+  Audit logs are automatically preserved in the database. Consider implementing a data retention policy based on your organization's compliance requirements.
+</Info>
+
+### Cascading Deletions
+
+When a user account is deleted, all associated audit entries are also deleted due to the CASCADE constraint. To preserve audit history, consider:
+
+- Implementing soft deletes for user accounts
+- Archiving audit logs before user deletion
+- Maintaining separate audit storage
+
+### Access Control
+
+<Warning>
+  Audit logs should only be accessible to administrators and super administrators. Ensure proper role-based access control is enforced.
+</Warning>
+
+## Use Cases
+
+### Security Investigations
+
+Use audit logs to:
+- Track unauthorized access attempts
+- Identify suspicious activity patterns
+- Investigate data breaches or modifications
+
+### Compliance and Reporting
+
+Audit logs support:
+- Regulatory compliance requirements
+- Internal audit processes
+- Activity reporting for management
+
+### Troubleshooting
+
+Diagnose issues by:
+- Reviewing user actions before an error
+- Identifying who made specific changes
+- Tracking the sequence of operations
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Review" icon="calendar-check">
+    Periodically review audit logs for unusual patterns or unauthorized access
+  </Card>
+  
+  <Card title="Retention Policy" icon="database">
+    Establish clear policies for how long audit data is retained
+  </Card>
+  
+  <Card title="Backup Strategy" icon="hard-drive">
+    Include audit logs in your regular backup procedures
+  </Card>
+  
+  <Card title="Access Restriction" icon="lock">
+    Limit audit log access to authorized administrators only
+  </Card>
+</CardGroup>

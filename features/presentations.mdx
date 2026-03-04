@@ -1,0 +1,493 @@
+---
+title: 'Presentation Management'
+description: 'Manage product presentation types including tablets, syrups, capsules, and other pharmaceutical forms'
+---
+
+## Overview
+
+The presentation management system maintains a catalog of pharmaceutical product forms and packaging types. Presentations classify products by their physical form (tablets, capsules, syrup, etc.), which is essential for inventory organization, prescription accuracy, and customer service.
+
+## Database Schema
+
+The `presentacion` (presentation) table stores product form classifications:
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | int(11) | PRIMARY KEY, AUTO_INCREMENT | Unique presentation identifier |
+| `nombre` | varchar(45) | NULL allowed | Presentation type name |
+
+<Note>
+Like the laboratory table, the presentation table has a simple structure with only an ID and name field. This lightweight design makes it easy to manage product form classifications.
+</Note>
+
+## Creating Presentations
+
+### Presentation Creation Workflow
+
+<Steps>
+  <Step title="Navigate to Presentations">
+    Go to "Presentación" in the main menu and click "Registrar Presentación"
+  </Step>
+  
+  <Step title="Enter Presentation Name">
+    Fill in the presentation type name
+  </Step>
+  
+  <Step title="Save">
+    Click "Guardar" to create the presentation record
+  </Step>
+  
+  <Step title="Confirmation">
+    You'll be redirected to the presentation list showing the new entry
+  </Step>
+</Steps>
+
+### Required Fields
+
+<Card title="Presentation Name (Nombre)" icon="box">
+  Enter the name of the pharmaceutical presentation type (up to 45 characters)
+</Card>
+
+### Common Presentation Types
+
+Pharmaceutical products come in various forms. Here are common examples to add to your system:
+
+**Solid Forms:**
+- **Tabletas** (Tablets): Compressed powder forms
+- **Cápsulas** (Capsules): Gelatin shells containing medication
+- **Comprimidos** (Pills): Similar to tablets, often coated
+- **Grageas** (Dragées): Coated tablets
+- **Polvos** (Powders): Loose powder form
+
+**Liquid Forms:**
+- **Jarabe** (Syrup): Sweet liquid medication
+- **Suspensión** (Suspension): Particles suspended in liquid
+- **Solución** (Solution): Dissolved medication in liquid
+- **Gotas** (Drops): Liquid administered by drops
+- **Ampollas** (Ampoules): Sealed vials for injection
+
+**Topical Forms:**
+- **Crema** (Cream): Emulsion for skin application
+- **Pomada** (Ointment): Oil-based topical
+- **Gel** (Gel): Semi-solid topical
+- **Ungüento** (Salve): Healing ointment
+
+**Other Forms:**
+- **Inyectable** (Injectable): For injection
+- **Óvulos** (Suppositories): For vaginal use
+- **Parches** (Patches): Transdermal patches
+- **Aerosol** (Aerosol/Spray): Pressurized spray
+
+### Insert Query
+
+When creating a presentation:
+
+```sql
+INSERT INTO presentacion (nombre) 
+VALUES ('{nombre}');
+```
+
+<Note>
+The database does not enforce unique presentation names, but it's recommended to avoid duplicates to maintain consistent product classification.
+</Note>
+
+## Viewing Presentations
+
+### Presentation List
+
+The presentation index displays all presentation types with:
+
+- Sequential number (#)
+- Presentation name
+- Action buttons (Edit, View, Delete)
+
+### Retrieve Presentation Data
+
+```sql
+SELECT * FROM presentacion WHERE 1;
+```
+
+The query retrieves all presentation records from the table.
+
+## Viewing Individual Presentations
+
+Click the eye icon to view detailed information about a specific presentation:
+
+- Presentation name
+- Associated products
+- Number of products by presentation
+- Stock levels by presentation type
+
+<Note>
+The detail view helps you understand product distribution by form, useful for shelf organization and inventory planning.
+</Note>
+
+## Editing Presentations
+
+### Edit Workflow
+
+1. Navigate to the presentation list
+2. Click the pencil icon next to the presentation
+3. Modify the presentation name
+4. Click "Guardar" to save changes
+
+### Editable Field
+
+- Presentation name (`nombre`)
+
+<Warning>
+Changing a presentation name affects how it displays across the entire system, including product listings, purchase records, and sales receipts. Ensure the change is intentional and communicated to users.
+</Warning>
+
+## Deleting Presentations
+
+### Deletion Rules
+
+Presentations can only be deleted if they have no associated products:
+
+```sql
+SELECT COUNT(*) as total 
+FROM articulo 
+WHERE presentacion_id = {id};
+```
+
+<Warning>
+Presentations with associated products cannot be deleted. This protects data integrity and prevents orphaned product records. If the count is greater than 0, deletion is blocked with the error: "Esa presentación esta relacionado con al menos un artículo, no puede ser eliminado."
+</Warning>
+
+### Delete Workflow
+
+<Steps>
+  <Step title="Initiate Deletion">
+    Click the trash icon next to the presentation
+  </Step>
+  
+  <Step title="Confirm Action">
+    Confirm the deletion in the alert dialog
+  </Step>
+  
+  <Step title="System Check">
+    The system checks for related products
+  </Step>
+  
+  <Step title="Process Result">
+    If no products exist, the presentation is deleted. Otherwise, an error is displayed.
+  </Step>
+</Steps>
+
+### Successful Deletion
+
+When a presentation has no dependencies:
+
+```sql
+DELETE FROM presentacion WHERE id = {id};
+```
+
+The deletion is logged in the audit trail with user information.
+
+## Presentation Relationships
+
+### Product Connection
+
+Presentations are connected to products through a foreign key:
+
+```sql
+-- In articulo table
+CONSTRAINT `fk_articulo_presentacion1` 
+    FOREIGN KEY (`presentacion_id`) REFERENCES `presentacion` (`id`)
+```
+
+One presentation can have multiple products:
+
+```
+Presentation: Tabletas (Tablets)
+├── Product: Aspirin 500mg Tablets
+├── Product: Ibuprofen 400mg Tablets
+└── Product: Paracetamol 500mg Tablets
+
+Presentation: Jarabe (Syrup)
+├── Product: Children's Cough Syrup 120ml
+└── Product: Ambroxol Syrup 100ml
+```
+
+### Product Organization
+
+Products are organized by presentation in several views:
+
+**Product Creation Form:**
+```sql
+SELECT id as presentacion_id, nombre as presentacion_nombre 
+FROM presentacion 
+WHERE 1;
+```
+
+**Product Listing:**
+```sql
+SELECT 
+    presentacion.nombre as presentacion,
+    articulo.nombre,
+    ...
+FROM articulo, presentacion
+WHERE presentacion_id = presentacion.id;
+```
+
+**Purchase and Sales Forms:**
+Products are grouped by both laboratory and presentation for easy identification.
+
+## Use Cases
+
+### Product Catalog Organization
+
+Presentations help organize products by form:
+
+```
+Pharmacy Inventory
+├── Tabletas (500 products)
+├── Cápsulas (200 products)
+├── Jarabe (150 products)
+├── Crema (100 products)
+└── Inyectable (50 products)
+```
+
+### Prescription Accuracy
+
+Correct presentation classification ensures:
+- Accurate dispensing (tablets vs. capsules)
+- Proper patient instructions (oral vs. topical)
+- Correct dosing (liquid vs. solid forms)
+- Regulatory compliance
+
+### Storage and Display
+
+Different presentations require different storage:
+- **Temperature-controlled**: Injectables, some creams
+- **Shelf storage**: Tablets, capsules
+- **Upright storage**: Syrups, suspensions
+- **Special handling**: Aerosols, ampoules
+
+<Note>
+Presentation classification helps organize physical inventory and optimize storage space in the pharmacy.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Standard Names" icon="book">
+    Use standard pharmaceutical terminology for presentation types
+  </Card>
+  
+  <Card title="Avoid Duplicates" icon="ban">
+    Check existing presentations before creating new ones to prevent duplicates
+  </Card>
+  
+  <Card title="Consistent Language" icon="language">
+    Use either Spanish or English consistently (recommended: Spanish for Colombian context)
+  </Card>
+  
+  <Card title="Complete Catalog" icon="list">
+    Set up all common presentation types during initial system configuration
+  </Card>
+</CardGroup>
+
+## Data Entry Tips
+
+### Naming Conventions
+
+Maintain consistency in presentation names:
+
+**Correct:**
+- ✅ "Tabletas"
+- ✅ "Cápsulas"
+- ✅ "Jarabe"
+
+**Avoid:**
+- ❌ "TABLETAS" (all caps)
+- ❌ "tableta" (singular form - use plural)
+- ❌ "Tabs" (abbreviations - use full words)
+
+### Singular vs. Plural
+
+Choose either singular or plural form and use consistently:
+
+**Recommended: Plural**
+- Tabletas, Cápsulas, Jarabes
+
+**Alternative: Singular**
+- Tableta, Cápsula, Jarabe
+
+<Note>
+The system doesn't enforce this, but consistency improves user experience and professional appearance.
+</Note>
+
+### Accent Marks
+
+Use proper Spanish orthography:
+- ✅ "Cápsulas" (with accent)
+- ✅ "Solución" (with accent)
+- ❌ "Capsulas" (missing accent)
+
+## Regulatory Considerations
+
+### Pharmaceutical Forms Classification
+
+Different countries have official classifications for pharmaceutical forms. In Colombia and Latin America, common regulatory categories include:
+
+- **Formas sólidas** (Solid forms)
+- **Formas líquidas** (Liquid forms)
+- **Formas semisólidas** (Semi-solid forms)
+- **Formas estériles** (Sterile forms)
+
+<Note>
+Ensure your presentation types align with local regulatory requirements and pharmacy practice standards.
+</Note>
+
+## Reporting and Analytics
+
+### Presentation Performance Reports
+
+Use presentation data for business intelligence:
+
+**Product Count by Presentation:**
+```sql
+SELECT 
+    presentacion.nombre,
+    COUNT(articulo.id) as total_products,
+    SUM(articulo.stock) as total_stock
+FROM presentacion
+LEFT JOIN articulo ON presentacion.id = articulo.presentacion_id
+GROUP BY presentacion.id
+ORDER BY total_products DESC;
+```
+
+**Sales by Presentation:**
+```sql
+SELECT 
+    presentacion.nombre,
+    SUM(venta_detalle.cantidad) as units_sold,
+    SUM(venta_detalle.cantidad * articulo.valor_venta) as total_sales
+FROM presentacion
+JOIN articulo ON presentacion.id = articulo.presentacion_id
+JOIN venta_detalle ON articulo.id = venta_detalle.articulo_id
+GROUP BY presentacion.id
+ORDER BY total_sales DESC;
+```
+
+### Inventory Analysis
+
+Analyze inventory distribution by presentation to:
+- Identify best-selling forms
+- Optimize shelf space allocation
+- Plan purchasing by product form
+- Understand customer preferences
+
+## Product Dependencies
+
+Before creating products, you must have at least one presentation in the system. The product creation form requires presentation selection:
+
+```php
+<select name='presentacion_id' required>
+    <option value=''>Seleccione una Presentación</option>
+    <?php while ($pres = $presentations->fetch()): ?>
+        <option value='<?= $pres['presentacion_id'] ?>'>
+            <?= $pres['presentacion_nombre'] ?>
+        </option>
+    <?php endwhile; ?>
+</select>
+```
+
+<Warning>
+If you attempt to create a product without any presentations in the system, the form will display an empty dropdown and prevent submission.
+</Warning>
+
+## System Setup Order
+
+When implementing the system, create presentations early in the setup process:
+
+<Steps>
+  <Step title="Create Laboratories">
+    Add pharmaceutical manufacturers
+  </Step>
+  
+  <Step title="Create Presentations">
+    Add all product form types you'll manage
+  </Step>
+  
+  <Step title="Create Products">
+    Products require both laboratory and presentation selection
+  </Step>
+  
+  <Step title="Start Operations">
+    Begin recording purchases and sales
+  </Step>
+</Steps>
+
+## Dosage vs. Presentation
+
+### Understanding the Difference
+
+- **Presentation**: Physical form (tablet, capsule, syrup)
+- **Dosage**: Amount of active ingredient (500mg, 250mg)
+
+**Example Product Classification:**
+- Name: "Aspirin 500mg"
+- Laboratory: "Bayer"
+- Presentation: "Tabletas"
+
+<Note>
+Dosage information is typically included in the product name, while presentation is a separate classification field.
+</Note>
+
+## Combined Classification
+
+Products are uniquely identified by the combination of:
+1. **Name** (including dosage)
+2. **Laboratory** (manufacturer)
+3. **Presentation** (form)
+
+This prevents duplicates:
+- ✅ "Aspirin 500mg" + "Bayer" + "Tabletas"
+- ✅ "Aspirin 500mg" + "Bayer" + "Cápsulas" (different presentation)
+- ❌ "Aspirin 500mg" + "Bayer" + "Tabletas" (duplicate)
+
+## Audit Trail
+
+All presentation operations are logged:
+
+- Presentation creation
+- Presentation name changes
+- Presentation deletion (attempted and successful)
+
+The audit log captures:
+- User who performed the action
+- Timestamp
+- IP address
+- Browser information
+- Action description
+
+## Future Enhancements
+
+Consider these potential improvements:
+
+1. **Dosage Units**: Link presentations to appropriate dosage units (mg for tablets, ml for syrups)
+2. **Administration Route**: Track oral, topical, injectable, etc.
+3. **Storage Requirements**: Temperature, humidity, light protection needs
+4. **Shelf Life**: Typical expiration timeframes by presentation type
+5. **Regulatory Categories**: Link to official pharmaceutical form classifications
+6. **Icons/Images**: Visual representation of each presentation type
+7. **Handling Instructions**: Special storage or dispensing requirements
+8. **Package Sizes**: Common package sizes for each presentation (e.g., bottles of 30, 60, 90 tablets)
+
+## Quick Reference Table
+
+| Presentation (Español) | English Translation | Typical Use |
+|------------------------|---------------------|-------------|
+| Tabletas | Tablets | Oral solid medication |
+| Cápsulas | Capsules | Oral medication in gelatin shell |
+| Jarabe | Syrup | Sweet liquid, often for children |
+| Suspensión | Suspension | Particles in liquid |
+| Inyectable | Injectable | Intravenous/intramuscular |
+| Crema | Cream | Topical skin application |
+| Gotas | Drops | Eye, ear, or oral drops |
+| Ampollas | Ampoules | Single-dose injectable |
+| Óvulos | Suppositories | Vaginal medication |
+| Gel | Gel | Topical semi-solid |

@@ -1,0 +1,240 @@
+---
+title: 'Dashboard Overview'
+description: 'Understand the main dashboard, key metrics, and navigation in Droguería Somos Salud'
+---
+
+## Dashboard Layout
+
+The dashboard is the first page users see after logging in. It provides a comprehensive overview of the pharmacy's key performance indicators and quick access to important features.
+
+<img src="/images/dashboard-preview.png" alt="Dashboard Screenshot" />
+
+## Key Metrics
+
+The dashboard displays four main statistical boxes showing real-time business metrics:
+
+### 1. Facturas por Pagar (Bills to Pay)
+
+<Card title="Bills to Pay" icon="bag-shopping" color="#00c0ef">
+  Shows the total amount of unpaid bills in the system
+</Card>
+
+This metric is calculated from the `factura` table (views/dashboard.php:37-41):
+
+```php
+$query = "SELECT sum(valor_factura) as total 
+          FROM factura 
+          WHERE estado_id='1';";
+$factura = $db->query($query) or die($db->error . __LINE__);
+$factura = $factura->fetch(PDO::FETCH_ASSOC);
+$factura = $factura['total'];
+```
+
+**What it shows:** Total value of all bills with status "Por pagar" (estado_id = 1)
+
+### 2. Porcentaje de Facturas por Pagar (Percentage of Bills to Pay)
+
+<Card title="Percentage to Pay" icon="chart-simple" color="#00a65a">
+  Displays what percentage of total bills remain unpaid
+</Card>
+
+Calculation logic (views/dashboard.php:58-61):
+
+```php
+$query = "SELECT ROUND((((SELECT SUM(factura.valor_factura) 
+                          FROM factura WHERE estado_id='1')*100)
+                          /SUM(factura.valor_factura)),2) AS porcentaje 
+          FROM factura;";
+```
+
+**What it shows:** (Unpaid bills / Total bills) × 100
+
+### 3. Compras Semanal (Weekly Purchases)
+
+<Card title="Weekly Purchases" icon="cart-shopping" color="#f39c12">
+  Total value of purchases made during the current week
+</Card>
+
+Query implementation (views/dashboard.php:79-82):
+
+```php
+$query = "SELECT sum(compra.cantidad*compra.valor_unitario) as total 
+          FROM compra, factura 
+          WHERE WEEK(fecha_factura) = WEEK(CURDATE());";
+```
+
+**What it shows:** Sum of (quantity × unit value) for all purchases in the current week
+
+### 4. Ventas Semanal (Weekly Sales)
+
+<Card title="Weekly Sales" icon="tag" color="#dd4b39">
+  Total value of sales made during the current week
+</Card>
+
+Query implementation (views/dashboard.php:100-103):
+
+```php
+$query = "SELECT sum(venta_detalle.cantidad*articulo.valor_venta) as total 
+          FROM venta, articulo, venta_detalle 
+          WHERE venta_detalle.articulo_id=articulo.id 
+          AND WEEK(fecha_venta) = WEEK(CURDATE());";
+```
+
+**What it shows:** Sum of (quantity × sale price) for all sales in the current week
+
+## Dashboard Components
+
+### Bill Expiration Calendar
+
+The dashboard includes a calendar view showing upcoming bill due dates (views/dashboard.php:19-28):
+
+```php
+<div class="box box-info">
+    <div class="box-header with-border">
+        Vencimiento de Facturas
+    </div>
+    <div class="box-body chart-responsive">
+        <div class="chart">
+            <div id='calendar'></div>
+        </div>
+    </div>
+    <?php include 'views/charts/calendar.php'; ?>
+</div>
+```
+
+<Info>
+  The calendar displays all bills and their expiration dates, helping users track payment deadlines.
+</Info>
+
+### Sales Chart
+
+A graphical representation of sales over time is displayed below the metrics (views/dashboard.php:124-134):
+
+```php
+<div class="box box-info">
+    <div class="box-header with-border">
+        Ventas
+    </div>
+    <div class="box-body chart-responsive">
+        <div class="chart">
+            <div id="chartSales" style="height:250px"></div>
+        </div>
+    </div>
+    <?php include 'views/charts/sales.php'; ?>
+</div>
+```
+
+## Navigation
+
+### Breadcrumb Trail
+
+The dashboard header includes breadcrumb navigation (views/dashboard.php:9-11):
+
+```php
+<ol class="breadcrumb">
+    <li class="active fa fa-dashboard"> Principal</li>
+</ol>
+```
+
+### Quick Links
+
+Each metric box includes a "Más información" (More Information) link that directs users to detailed views:
+
+| Metric Box | Link Destination | Description |
+|-----------|------------------|-------------|
+| Facturas por Pagar | `/bills/` | Full list of bills |
+| Compras Semanal | `/purchases/` | Purchase management |
+| Ventas Semanal | `/sales/` | Sales management |
+
+Code example from the Bills metric (views/dashboard.php:49):
+
+```php
+<a href="/bills/" class="small-box-footer">
+    Más información <i class="fa fa-arrow-circle-right"></i>
+</a>
+```
+
+## Dashboard Access
+
+The dashboard is accessible to all authenticated users regardless of role. From index.php, when the URL is `/`, the system loads the dashboard (index.php:14-15, 111-112, 208-209):
+
+```php
+if ($url == "/") {
+    include 'views/dashboard.php';
+}
+```
+
+<Check>
+  All three user roles (Super Admin, Admin, and User) have access to the dashboard with the same view.
+</Check>
+
+## Responsive Layout
+
+The dashboard uses Bootstrap grid system for responsive design:
+
+<CodeGroup>
+```html Large Devices (9 columns)
+<div class="col-lg-9 col-md-9 col-xs-12">
+    <!-- Calendar widget -->
+</div>
+```
+
+```html Small Devices (3 columns)
+<div class="col-lg-3 col-md-3 col-xs-12">
+    <!-- Metric boxes -->
+</div>
+```
+</CodeGroup>
+
+## Database Tables Used
+
+The dashboard queries data from multiple tables:
+
+<AccordionGroup>
+<Accordion title="factura (Bills)">
+  Stores invoice information including amounts, dates, and payment status
+  - Used for: Bills to Pay metric and percentage calculation
+  - Key fields: `valor_factura`, `estado_id`, `fecha_factura`
+</Accordion>
+
+<Accordion title="compra (Purchases)">
+  Contains purchase details linked to bills
+  - Used for: Weekly Purchases metric
+  - Key fields: `cantidad`, `valor_unitario`, `factura_id`
+</Accordion>
+
+<Accordion title="venta (Sales)">
+  Sales transaction records
+  - Used for: Weekly Sales metric
+  - Key fields: `fecha_venta`
+</Accordion>
+
+<Accordion title="venta_detalle (Sales Details)">
+  Individual line items for each sale
+  - Used for: Weekly Sales calculation
+  - Key fields: `cantidad`, `articulo_id`, `venta_id`
+</Accordion>
+
+<Accordion title="articulo (Articles)">
+  Product information including sale prices
+  - Used for: Weekly Sales calculation
+  - Key fields: `valor_venta`
+</Accordion>
+</AccordionGroup>
+
+## Page Header
+
+The dashboard displays a header with title and subtitle (views/dashboard.php:5-8):
+
+```php
+<h1>
+    Principal
+    <small>Panel de Control</small>
+</h1>
+```
+
+This translates to "Main - Control Panel" in English.
+
+<Tip>
+  The dashboard provides real-time data, so metrics update immediately as transactions are processed in the system.
+</Tip>

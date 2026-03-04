@@ -1,0 +1,252 @@
+---
+title: 'Database Relationships'
+description: 'Foreign key relationships and constraints between database tables'
+---
+
+# Database Relationships
+
+This page documents all foreign key relationships and referential integrity constraints in the Droguería Somos Salud database.
+
+## Relationship Diagram
+
+```
+┌──────────────┐
+│  laboratorio │
+└──────┬───────┘
+       │
+       │ 1:N
+       ▼
+┌──────────────┐      ┌──────────────┐
+│ presentacion │      │   proveedor  │
+└──────┬───────┘      └──────┬───────┘
+       │                     │
+       │ 1:N                 │ 1:N
+       ▼                     ▼
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│   articulo   │      │   factura    │◄─────┤    estado    │
+└──────┬───────┘      └──────┬───────┘      └──────────────┘
+       │                     │                      1:N
+       │                     │ 1:N
+       │              ┌──────┴───────┐
+       │              ▼              │
+       │       ┌──────────────┐      │
+       │       │    compra    │◄─────┘
+       │       └──────────────┘
+       │
+       │ 1:N            1:N
+       ├──────────────────────────┐
+       ▼                          ▼
+┌──────────────┐         ┌──────────────┐
+│venta_detalle │◄────────┤    venta     │
+└──────────────┘   1:N   └──────────────┘
+
+
+┌──────────────┐      ┌──────────────┐
+│     rol      │      │     user     │
+└──────┬───────┘      └──────┬───────┘
+       │                     │
+       │ 1:N                 │ 1:N
+       └──────►───────◄──────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │  auditoria   │
+              └──────────────┘
+```
+
+## Product Relationships
+
+### articulo → laboratorio
+
+**Constraint**: `fk_articulo_laboratorio1`
+
+```sql
+FOREIGN KEY (laboratorio_id) REFERENCES laboratorio(id)
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: Not specified (default: RESTRICT)
+- **ON UPDATE**: Not specified (default: RESTRICT)
+- **Description**: Each product must belong to one laboratory/manufacturer. Cannot delete a laboratory that has products.
+
+### articulo → presentacion
+
+**Constraint**: `fk_articulo_presentacion1`
+
+```sql
+FOREIGN KEY (presentacion_id) REFERENCES presentacion(id)
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: Not specified (default: RESTRICT)
+- **ON UPDATE**: Not specified (default: RESTRICT)
+- **Description**: Each product must have one presentation type. Cannot delete a presentation type that is in use.
+
+## Purchase Relationships
+
+### compra → articulo
+
+**Constraint**: `fk_compra_articulo1`
+
+```sql
+FOREIGN KEY (articulo_id) REFERENCES articulo(id) 
+    ON DELETE NO ACTION 
+    ON UPDATE NO ACTION
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: NO ACTION (cannot delete products with purchase history)
+- **ON UPDATE**: NO ACTION (cannot update product IDs that have purchases)
+- **Description**: Each purchase item references a product. Protects historical purchase data.
+
+### compra → factura
+
+**Constraint**: `fk_compra_factura1`
+
+```sql
+FOREIGN KEY (factura_id) REFERENCES factura(id) 
+    ON DELETE NO ACTION 
+    ON UPDATE CASCADE
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: NO ACTION (cannot delete invoices with purchase items)
+- **ON UPDATE**: CASCADE (updates propagate to purchase items)
+- **Description**: Purchase items are grouped by invoice. One invoice can contain multiple purchase items.
+
+### factura → proveedor
+
+**Constraint**: `fk_factura_proveedor`
+
+```sql
+FOREIGN KEY (proveedor_id) REFERENCES proveedor(id) 
+    ON DELETE NO ACTION 
+    ON UPDATE NO ACTION
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: NO ACTION (cannot delete suppliers with invoices)
+- **ON UPDATE**: NO ACTION (cannot update supplier IDs with invoices)
+- **Description**: Each invoice must belong to one supplier. Protects historical invoice data.
+
+### factura → estado
+
+**Constraint**: `factura_ibfk_1`
+
+```sql
+FOREIGN KEY (estado_id) REFERENCES estado(id)
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: Not specified (default: RESTRICT)
+- **ON UPDATE**: Not specified (default: RESTRICT)
+- **Description**: Each invoice has a payment status (Por pagar, Pagada). Cannot delete status types in use.
+
+## Sales Relationships
+
+### venta_detalle → venta
+
+**Constraint**: `fk_venta_detalle_venta1`
+
+```sql
+FOREIGN KEY (venta_id) REFERENCES venta(id)
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: Not specified (default: RESTRICT)
+- **ON UPDATE**: Not specified (default: RESTRICT)
+- **Description**: Each sale detail line belongs to one sale transaction. One sale can have multiple items.
+
+### venta_detalle → articulo
+
+**Constraint**: `fk_venta_articulo1`
+
+```sql
+FOREIGN KEY (articulo_id) REFERENCES articulo(id) 
+    ON DELETE NO ACTION 
+    ON UPDATE NO ACTION
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: NO ACTION (cannot delete products with sales history)
+- **ON UPDATE**: NO ACTION (cannot update product IDs that have sales)
+- **Description**: Each sale item references a product. Protects historical sales data.
+
+## User Management Relationships
+
+### user → rol
+
+**Constraint**: `user_ibfk_1`
+
+```sql
+FOREIGN KEY (rol_id) REFERENCES rol(id)
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: Not specified (default: RESTRICT)
+- **ON UPDATE**: Not specified (default: RESTRICT)
+- **Description**: Each user must have one role (Super Admin, Admin, or User). Cannot delete roles assigned to users.
+
+### auditoria → user
+
+**Constraint**: `auditoria_ibfk_1`
+
+```sql
+FOREIGN KEY (user_id) REFERENCES user(id) 
+    ON DELETE CASCADE 
+    ON UPDATE CASCADE
+```
+
+- **Type**: Many-to-One
+- **ON DELETE**: CASCADE (deleting a user deletes their audit records)
+- **ON UPDATE**: CASCADE (updates propagate to audit records)
+- **Description**: Each audit log entry belongs to one user. When a user is deleted, their audit trail is also removed.
+
+## Relationship Summary
+
+| Parent Table | Child Table | Relationship | ON DELETE | ON UPDATE |
+|--------------|-------------|--------------|-----------|-----------|
+| laboratorio | articulo | 1:N | RESTRICT | RESTRICT |
+| presentacion | articulo | 1:N | RESTRICT | RESTRICT |
+| articulo | compra | 1:N | NO ACTION | NO ACTION |
+| articulo | venta_detalle | 1:N | NO ACTION | NO ACTION |
+| factura | compra | 1:N | NO ACTION | CASCADE |
+| proveedor | factura | 1:N | NO ACTION | NO ACTION |
+| estado | factura | 1:N | RESTRICT | RESTRICT |
+| venta | venta_detalle | 1:N | RESTRICT | RESTRICT |
+| rol | user | 1:N | RESTRICT | RESTRICT |
+| user | auditoria | 1:N | CASCADE | CASCADE |
+
+## Referential Integrity Notes
+
+### Data Protection
+
+The database uses `ON DELETE NO ACTION` for most transactional relationships to prevent accidental deletion of historical data:
+- Purchase records (`compra`) are protected even if products are deleted
+- Sales records (`venta_detalle`) are protected even if products are deleted
+- Invoices (`factura`) are protected even if suppliers are deleted
+
+### Cascading Updates
+
+Only two relationships use `CASCADE` on update:
+- `compra → factura`: Invoice ID changes propagate to purchase items
+- `auditoria → user`: User ID changes propagate to audit logs
+
+### Cascading Deletes
+
+Only one relationship uses `CASCADE` on delete:
+- `auditoria → user`: Deleting a user removes their audit trail
+
+### RESTRICT vs NO ACTION
+
+Both `RESTRICT` and `NO ACTION` prevent deletion of referenced records:
+- **RESTRICT**: Checks constraint immediately
+- **NO ACTION**: Checks constraint at end of transaction
+- In practice, both behave similarly in this schema
+
+## Index Coverage
+
+All foreign key columns are indexed for optimal query performance:
+- Ensures fast JOIN operations
+- Enables efficient constraint checking
+- Improves query performance for related data lookups

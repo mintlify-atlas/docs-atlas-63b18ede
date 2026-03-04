@@ -1,0 +1,320 @@
+---
+title: 'Purchase Management'
+description: 'Register and manage product purchases, track supplier invoices, and automatically update inventory stock levels'
+---
+
+## Overview
+
+The purchase management system allows you to register incoming product shipments from suppliers. Each purchase is linked to a supplier invoice (factura) and automatically updates the inventory stock levels. The system tracks purchase quantities, unit costs, and expiration dates for pharmaceutical products.
+
+## Database Schema
+
+### Compra (Purchase) Table
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | int(11) | PRIMARY KEY, AUTO_INCREMENT | Unique purchase record identifier |
+| `cantidad` | int(11) | NOT NULL | Quantity purchased |
+| `fecha_vencimiento` | date | NOT NULL | Product expiration date |
+| `valor_unitario` | decimal(12,2) | NOT NULL | Unit purchase cost |
+| `articulo_id` | int(11) | NOT NULL, FOREIGN KEY | Reference to product |
+| `factura_id` | int(11) | NOT NULL, FOREIGN KEY | Reference to supplier invoice |
+
+### Foreign Key Relationships
+
+```sql
+CONSTRAINT `fk_compra_articulo1` 
+    FOREIGN KEY (`articulo_id`) REFERENCES `articulo` (`id`)
+
+CONSTRAINT `fk_compra_factura1` 
+    FOREIGN KEY (`factura_id`) REFERENCES `factura` (`id`) 
+    ON UPDATE CASCADE
+```
+
+<Note>
+Each purchase record represents a single product line item within a supplier invoice. One invoice can contain multiple purchase records for different products.
+</Note>
+
+## Creating Purchases
+
+### Prerequisites
+
+Before creating a purchase, you must have:
+
+1. **Registered Products**: Products must exist in the system
+2. **Registered Suppliers**: Suppliers must be created (Proveedores)
+3. **Created Invoice**: An invoice (factura) must be created for the supplier
+
+### Purchase Creation Workflow
+
+<Steps>
+  <Step title="Navigate to Purchases">
+    Go to "Compras" in the main menu and click "Registrar Compras"
+  </Step>
+  
+  <Step title="Select Invoice">
+    Choose the supplier invoice from the dropdown menu (grouped by supplier name)
+  </Step>
+  
+  <Step title="Select Product">
+    Choose the product being purchased (grouped by laboratory and presentation)
+  </Step>
+  
+  <Step title="Enter Purchase Details">
+    Fill in quantity, expiration date, and unit cost
+  </Step>
+  
+  <Step title="Choose Action">
+    Click "Añadir otro producto a la compra" to add more items, or "Finalizar compra" to complete
+  </Step>
+  
+  <Step title="Automatic Stock Update">
+    The system automatically increases the product's stock level by the purchased quantity
+  </Step>
+</Steps>
+
+### Required Fields
+
+<CardGroup cols={2}>
+  <Card title="Invoice (Factura)" icon="file-invoice">
+    Select the supplier invoice this purchase belongs to
+  </Card>
+  
+  <Card title="Product (Artículo)" icon="pills">
+    Select the pharmaceutical product being purchased
+  </Card>
+  
+  <Card title="Quantity (Cantidad)" icon="hashtag">
+    Enter the number of units purchased (integer value)
+  </Card>
+  
+  <Card title="Expiration Date" icon="calendar">
+    Set the product's expiration date (important for pharmaceutical inventory)
+  </Card>
+  
+  <Card title="Unit Cost (Valor Unitario)" icon="dollar-sign">
+    Enter the purchase price per unit (decimal with 2 decimal places)
+  </Card>
+</CardGroup>
+
+### Purchase Insert Process
+
+When a purchase is created, the system executes two operations:
+
+**1. Create Purchase Record:**
+```sql
+INSERT INTO compra (
+    articulo_id,
+    factura_id,
+    cantidad,
+    fecha_vencimiento,
+    valor_unitario
+) VALUES (
+    '{articulo_id}',
+    '{factura_id}',
+    '{cantidad}',
+    '{fecha_vencimiento}',
+    '{valor_unitario}'
+);
+```
+
+**2. Update Product Stock:**
+```sql
+UPDATE articulo 
+SET stock = stock + {cantidad} 
+WHERE articulo.id = {articulo_id}
+```
+
+<Note>
+Both operations are critical. The purchase record maintains historical purchase data, while the stock update ensures real-time inventory accuracy.
+</Note>
+
+## Viewing Purchases
+
+### Purchase List
+
+The purchase index displays all purchase records with:
+
+- Sequential number (#)
+- Product name
+- Laboratory
+- Presentation type
+- Expiration date
+- Quantity purchased
+- Unit cost
+- Sale price
+- Action buttons (Edit, View, Delete)
+
+### Retrieve Purchase Data
+
+The system retrieves purchase data using this query:
+
+```sql
+SELECT 
+    presentacion.nombre as presentacion,
+    laboratorio.nombre as laboratorio,
+    articulo.nombre as articulo,
+    fecha_vencimiento,
+    cantidad,
+    valor_unitario,
+    articulo.valor_venta,
+    compra.id
+FROM articulo, laboratorio, presentacion, compra
+WHERE laboratorio_id = laboratorio.id
+  AND presentacion_id = presentacion.id
+  AND articulo.id = compra.articulo_id;
+```
+
+## Editing Purchases
+
+### Edit Workflow
+
+1. Navigate to the purchase list
+2. Click the pencil icon next to the purchase record
+3. Modify the desired fields
+4. Save changes
+
+<Warning>
+Editing purchase quantities or products after the original purchase can cause inventory discrepancies. The system does not automatically adjust stock when editing existing purchases. Use this feature carefully and verify stock levels after making changes.
+</Warning>
+
+### Editable Fields
+
+- Invoice association
+- Product
+- Quantity
+- Expiration date
+- Unit cost
+
+## Deleting Purchases
+
+### Deletion Process
+
+Purchases can be deleted at any time using:
+
+```sql
+DELETE FROM compra WHERE id = {id};
+```
+
+<Warning>
+Deleting a purchase record does NOT automatically adjust the product's stock level. If you delete a purchase, you must manually correct the inventory stock to maintain accuracy. Consider the impact on inventory before deleting purchase records.
+</Warning>
+
+### Delete Workflow
+
+1. Click the trash icon next to the purchase record
+2. Confirm deletion in the alert dialog
+3. The purchase record is permanently removed
+4. Audit log is updated with user information
+
+## Multiple Products Per Invoice
+
+### Workflow Options
+
+When creating a purchase, you have two options:
+
+**Option 1: Add Another Product**
+- Click "Añadir otro producto a la compra"
+- Redirects back to the purchase creation form
+- Allows you to add more products to the same or different invoices
+
+**Option 2: Finalize Purchase**
+- Click "Finalizar compra"
+- Redirects to the purchase list
+- Completes the purchase entry process
+
+<Note>
+There is no formal "shopping cart" for purchases. Each product is added individually and committed immediately. The distinction between the buttons is primarily for workflow convenience.
+</Note>
+
+## Purchase vs. Invoice Relationship
+
+### Understanding the Connection
+
+- **Invoice (Factura)**: Represents the supplier's bill containing one or more products
+- **Purchase (Compra)**: Represents individual product line items within an invoice
+
+```
+Invoice #12345 (Supplier: ABC Pharma)
+├── Purchase 1: Aspirin 500mg (100 units)
+├── Purchase 2: Ibuprofen 400mg (200 units)
+└── Purchase 3: Paracetamol 500mg (150 units)
+```
+
+### Invoice States
+
+Invoices track payment status through the `estado` (state) table:
+
+| ID | Estado |
+|----|--------|
+| 1 | Por pagar (Unpaid) |
+| 2 | Pagada (Paid) |
+
+## Expiration Date Tracking
+
+### Importance for Pharmaceuticals
+
+The `fecha_vencimiento` field is critical for pharmaceutical inventory management:
+
+- Tracks when products expire
+- Helps with FIFO (First In, First Out) inventory rotation
+- Enables reporting on soon-to-expire products
+- Supports compliance with pharmaceutical regulations
+
+<Warning>
+Always verify expiration dates carefully when entering purchases. Selling expired pharmaceutical products is illegal and dangerous.
+</Warning>
+
+## Cost vs. Sale Price
+
+### Price Tracking
+
+The system tracks two price points for each purchase:
+
+1. **Unit Cost** (`valor_unitario` in compra): What you paid the supplier
+2. **Sale Price** (`valor_venta` in articulo): What you charge customers
+
+This enables:
+- Profit margin analysis
+- Cost tracking per purchase batch
+- Pricing strategy evaluation
+
+<Note>
+The sale price is stored at the product level and applies to all stock units. The unit cost varies by purchase batch, allowing you to track cost fluctuations over time.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Create Invoices First" icon="receipt">
+    Always create the supplier invoice before entering purchase line items
+  </Card>
+  
+  <Card title="Verify Expiration Dates" icon="calendar-check">
+    Double-check expiration dates to ensure pharmaceutical compliance
+  </Card>
+  
+  <Card title="Accurate Quantities" icon="balance-scale">
+    Count received items carefully before entering purchase quantities
+  </Card>
+  
+  <Card title="Track Unit Costs" icon="chart-line">
+    Record actual purchase costs to enable accurate profit analysis
+  </Card>
+</CardGroup>
+
+## Audit Trail
+
+All purchase operations are logged in the audit system:
+
+- Purchase creation
+- Purchase modification
+- Purchase deletion
+- Stock adjustments
+
+The audit log captures:
+- User who performed the action
+- Timestamp
+- IP address
+- Browser information
+- Action description

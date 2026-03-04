@@ -1,0 +1,101 @@
+---
+title: 'Database Overview'
+description: 'Overview of the Droguería Somos Salud MySQL database architecture and key entities'
+---
+
+# Database Overview
+
+The Droguería Somos Salud system uses a MySQL database to manage all aspects of the pharmacy inventory management system, including products, suppliers, purchases, sales, and user management.
+
+## Database Information
+
+- **Database Name**: `drogueria`
+- **Character Set**: UTF-8 (utf8_swedish_ci)
+- **Storage Engine**: InnoDB
+- **DBMS**: MySQL 5.5.57 or higher
+
+## Key Entities
+
+The database is structured around the following core entities:
+
+### Product Management
+- **articulo**: Core product/medicine catalog with stock levels and pricing
+- **laboratorio**: Pharmaceutical laboratories (manufacturers)
+- **presentacion**: Product presentation types (tablets, syrups, etc.)
+
+### Purchase Management
+- **compra**: Individual purchase items with expiration dates and unit costs
+- **factura**: Supplier invoices with payment tracking
+- **proveedor**: Supplier information and contact details
+- **estado**: Invoice payment status (Por pagar, Pagada)
+
+### Sales Management
+- **venta**: Sales transactions with timestamps
+- **venta_detalle**: Individual line items for each sale
+
+### System Management
+- **user**: System users with authentication credentials
+- **rol**: User roles (Super Admin, Admin, User)
+- **auditoria**: System audit trail tracking all user actions
+
+## Entity Relationship Concept
+
+The database follows a normalized relational design:
+
+```
+Products (articulo)
+├── References: laboratorio (manufacturer)
+├── References: presentacion (presentation type)
+└── Used in: compra, venta_detalle
+
+Purchases (compra)
+├── References: articulo (product purchased)
+└── References: factura (invoice)
+
+Invoices (factura)
+├── References: proveedor (supplier)
+├── References: estado (payment status)
+└── Contains: compra (purchase items)
+
+Sales (venta)
+└── Contains: venta_detalle (sale items)
+    └── References: articulo (product sold)
+
+Users (user)
+├── References: rol (user role)
+└── Tracked in: auditoria (audit log)
+```
+
+## Design Principles
+
+### Referential Integrity
+All foreign key relationships are enforced at the database level using InnoDB's foreign key constraints, ensuring data consistency across related tables.
+
+### Audit Trail
+The `auditoria` table provides comprehensive tracking of user actions, including:
+- User browser information
+- IP addresses
+- URLs accessed
+- Action descriptions
+- Timestamps
+
+### Stock Management
+The `articulo` table maintains both current stock levels and minimum stock thresholds, enabling automatic reorder alerts.
+
+### Financial Tracking
+The system tracks complete financial information including:
+- Purchase costs (valor_unitario)
+- Sale prices (valor_venta)
+- Invoice amounts with IVA (tax)
+- Payment status
+
+## Auto-increment IDs
+
+All tables use auto-incrementing integer primary keys for efficient indexing and relationship management.
+
+## Timestamps
+
+The database uses MySQL timestamp fields with automatic updates:
+- `auditoria.created_at`: Auto-updates on record modification
+- `user.created_at`: Auto-updates on record modification
+- `venta.fecha_venta`: Defaults to current timestamp on insert
